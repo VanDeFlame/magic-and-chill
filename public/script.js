@@ -2,95 +2,105 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 class Character {
-	prevMovement = 0; // Variable para almacenar el movimiento anterior
-	constructor(areaMaxWidth, areaMaxHeight, assets) {
-		this.sprite = new Image();
-		this.sprite.src = assets;
-		this.speed = 15; // Velocidad de movimiento del personaje
-		const aspectRatio = this.sprite.width / this.sprite.height;
-		const characterWidth = areaMaxWidth / 8; // Ancho del personaje
-		const characterHeight = characterWidth / aspectRatio; // Alto del personaje basado en el ancho y la relación de aspecto
-		this.characterX = areaMaxWidth / 2 - characterWidth / 2; // Posición inicial en X
-		this.characterY = areaMaxHeight / 2 - characterHeight / 2; // Posición inicial en Y
-		this.characterWidth = characterWidth; // Ancho del personaje
-		this.characterHeight = characterHeight; // Alto del personaje
+	constructor(areaMaxWidth, areaMaxHeight, spriteSheetSrc) {
+		this.spriteSheet = new Image();
+		this.spriteSheet.src = spriteSheetSrc;
+
+		this.spriteSheet.onload = () => {
+			this.initCharacterSize(areaMaxWidth, areaMaxHeight);
+		};
+
+		this.frameWidth = 64; // Ancho del sprite
+		this.frameHeight = 64; // Alto del sprite
+		this.frameMax = 4; // Número de frames en la hoja de sprites
+		this.frameIndex = 0; // Índice del frame actual
+		this.frameDelay = 10; // Velocidad de cambio de frame
+		this.frameTimer = 0; // Temporizador para el cambio de frame
+
+		this.actions = {
+			walkingDown: 0,
+			walkingLeft: 1,
+			walkingRight: 2,
+			walkingUp: 3,
+		}; // Acciones del personaje basadas en la fila del spritesheet
+		this.currentAction = 'walkingDown'; // Acción actual del personaje
+
+		this.speed = 50; // Velocidad de movimiento del personaje
 		this.areaMaxWidth = areaMaxWidth; // Ancho máximo del área de movimiento
 		this.areaMaxHeight = areaMaxHeight; // Ancho máximo del área de movimiento
 	}
 
+	initCharacterSize(areaMaxWidth, areaMaxHeight) {
+		const scale = 2; // Escalamos los 64px a algo más grande (opcional)
+		this.characterWidth = this.frameWidth * scale; // Ancho del personaje
+		this.characterHeight = this.frameHeight * scale; // Alto del personaje
+		this.characterX = areaMaxWidth / 2 - this.characterWidth / 2; // Posición inicial en X
+		this.characterY = areaMaxHeight / 2 - this.characterHeight / 2; // Posición inicial en Y
+	}
+
+	updateFrame() {
+		this.frameTimer++;
+		if (this.frameTimer >= this.frameDelay) {
+			this.frameIndex = (this.frameIndex + 1) % this.frameMax;
+			this.frameTimer = 0;
+		}
+	}
+
 	doSomething() {
-		let action = this.prevMovement; // Inicializar la acción con el movimiento anterior
-		const randomNumber = Math.floor(Math.random() * 100); // Generar un número aleatorio entre 0 y 3
+		const random = Math.floor(Math.random() * 100);
+		if (random < 5) this.move('up');
+		else if (random < 10) this.move('down');
+		else if (random < 15) this.move('left');
+		else if (random < 20) this.move('right');
 
-		if (randomNumber < 5) {
-			action = randomNumber; // Si el número es menor que 5, usarlo como acción
-		} else if (randomNumber < 25) {
-			action = 0;
-		} else {
-			action = this.prevMovement;
-		}
-		this.prevMovement = action; // Actualizar el movimiento anterior
-		switch (action) {
-			case 0:
-				break; // No hacer nada
-			case 1:
-				this.move('up'); // Mover hacia arriba
-				break;
-			case 2:
-				this.move('down'); // Mover hacia abajo
-				break;
-			case 3:
-				this.move('left'); // Mover hacia la izquierda
-				break;
-			case 4:
-				this.move('right'); // Mover hacia la derecha
-				break;
-		}
-	}
-
-	moveUp(speed) {
-		if (this.characterY > 0) {
-			this.characterY -= speed;
-		}
-	}
-
-	moveDown(speed) {
-		if (this.characterY < this.areaMaxHeight - this.characterHeight) {
-			this.characterY += speed;
-		}
-	}
-
-	moveLeft(speed) {
-		if (this.characterX > 0) {
-			this.characterX -= speed;
-		}
-	}
-
-	moveRight(speed) {
-		if (this.characterX < this.areaMaxWidth - this.characterWidth) {
-			this.characterX += speed;
-		}
+		this.updateFrame();
 	}
 
 	move(direction) {
-		const speed = Math.floor(Math.random() * this.speed + 1); // Generar un número aleatorio entre 0 y la velocidad máxima
+		const speed = Math.floor(Math.random() * this.speed + 1);
 		switch (direction) {
 			case 'up':
-				this.moveUp(speed);
+				this.currentAction = 'walkingUp';
+				this.characterY = Math.max(0, this.characterY - speed);
 				break;
 			case 'down':
-				this.moveDown(speed);
+				this.currentAction = 'walkingDown';
+				this.characterY = Math.min(
+					this.areaMaxHeight - this.characterHeight,
+					this.characterY + speed
+				);
 				break;
 			case 'left':
-				this.moveLeft(speed);
+				this.currentAction = 'walkingLeft';
+				this.characterX = Math.max(0, this.characterX - speed);
 				break;
 			case 'right':
-				this.moveRight(speed);
+				this.currentAction = 'walkingRight';
+				this.characterX = Math.min(
+					this.areaMaxWidth - this.characterWidth,
+					this.characterX + speed
+				);
 				break;
 		}
 	}
-}
 
+	getCurrentSpriteInfo() {
+		const frameX = this.frameIndex * this.frameWidth;
+		const frameY = this.actions[this.currentAction] * this.frameHeight;
+
+		return {
+			spriteSheet: this.spriteSheet,
+			spriteX: frameX,
+			spriteY: frameY,
+			spriteWidth: this.frameWidth,
+			spriteHeight: this.frameHeight,
+			characterX: this.characterX,
+			characterY: this.characterY,
+			characterWidth: this.characterWidth,
+			characterHeight: this.characterHeight,
+		};
+	}
+}
 class Canvas {
 	constructor(canvas, ctx) {
 		this.canvas = canvas;
@@ -106,12 +116,7 @@ class Canvas {
 			new Character(
 				canvasWidth,
 				canvasHeight,
-				'assets/characters/character_1.webp'
-			),
-			new Character(
-				canvasWidth,
-				canvasHeight,
-				'assets/characters/character_2.webp'
+				'assets/characters/spritesheet_1.png'
 			),
 		];
 
@@ -127,13 +132,7 @@ class Canvas {
 	}
 
 	drawCharacter(character) {
-		this.ctx.drawImage(
-			character.sprite,
-			character.characterX,
-			character.characterY,
-			character.characterWidth,
-			character.characterHeight
-		); // Posición del personaje
+		this.ctx.drawImage(...Object.values(character.getCurrentSpriteInfo())); // Dibuja el personaje en el canvas
 	}
 
 	frame() {
