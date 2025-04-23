@@ -25,9 +25,15 @@ class Character {
 		}; // Acciones del personaje basadas en la fila del spritesheet
 		this.currentAction = 'walkingDown'; // Acción actual del personaje
 
-		this.speed = 50; // Velocidad de movimiento del personaje
+		this.speed = 1.5; // Velocidad de movimiento del personaje
 		this.areaMaxWidth = areaMaxWidth; // Ancho máximo del área de movimiento
 		this.areaMaxHeight = areaMaxHeight; // Ancho máximo del área de movimiento
+
+		// Estado para comportamiento más natural
+		this.state = 'idle'; // 'idle' o 'moving'
+		this.stateTimer = 0;
+		this.stateDuration = this.getRandomDuration();
+		this.direction = null; // dirección actual durante 'moving'
 	}
 
 	initCharacterSize(areaMaxWidth, areaMaxHeight) {
@@ -36,6 +42,10 @@ class Character {
 		this.characterHeight = this.frameHeight * scale; // Alto del personaje
 		this.characterX = areaMaxWidth / 2 - this.characterWidth / 2; // Posición inicial en X
 		this.characterY = areaMaxHeight / 2 - this.characterHeight / 2; // Posición inicial en Y
+	}
+
+	getRandomDuration() {
+		return Math.floor(Math.random() * 120) + 60; // entre 1s y 3s (60 FPS)
 	}
 
 	updateFrame() {
@@ -47,38 +57,55 @@ class Character {
 	}
 
 	doSomething() {
-		const random = Math.floor(Math.random() * 100);
-		if (random < 5) this.move('up');
-		else if (random < 10) this.move('down');
-		else if (random < 15) this.move('left');
-		else if (random < 20) this.move('right');
+		this.stateTimer++;
+
+		if (this.stateTimer >= this.stateDuration) {
+			this.stateTimer = 0;
+			this.stateDuration = this.getRandomDuration();
+
+			if (this.state === 'idle') {
+				// Cambiamos a movimiento
+				this.state = 'moving';
+				const directions = ['up', 'down', 'left', 'right'];
+				this.direction =
+					directions[Math.floor(Math.random() * directions.length)];
+			} else {
+				// Cambiamos a idle
+				this.state = 'idle';
+				this.direction = null;
+			}
+		}
+
+		if (this.state === 'moving' && this.direction) {
+			this.move(this.direction);
+		}
 
 		this.updateFrame();
 	}
 
 	move(direction) {
-		const speed = Math.floor(Math.random() * this.speed + 1);
+		const dx = this.speed;
 		switch (direction) {
 			case 'up':
 				this.currentAction = 'walkingUp';
-				this.characterY = Math.max(0, this.characterY - speed);
+				this.characterY = Math.max(0, this.characterY - dx);
 				break;
 			case 'down':
 				this.currentAction = 'walkingDown';
 				this.characterY = Math.min(
 					this.areaMaxHeight - this.characterHeight,
-					this.characterY + speed
+					this.characterY + dx
 				);
 				break;
 			case 'left':
 				this.currentAction = 'walkingLeft';
-				this.characterX = Math.max(0, this.characterX - speed);
+				this.characterX = Math.max(0, this.characterX - dx);
 				break;
 			case 'right':
 				this.currentAction = 'walkingRight';
 				this.characterX = Math.min(
 					this.areaMaxWidth - this.characterWidth,
-					this.characterX + speed
+					this.characterX + dx
 				);
 				break;
 		}
