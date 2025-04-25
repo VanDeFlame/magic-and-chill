@@ -1,51 +1,284 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+const CELL_SIZE = 64; // Tamaño de cada celda en píxeles
+const CHARACTER_SPRITE = 'assets/characters/spritesheet_1.png'; // Ruta de la hoja de sprites del personaje
+
+class Grid {
+	constructor(width, height, cellSize) {
+		this.canvasWidth = width;
+		this.canvasHeight = height;
+		this.cellSize = cellSize;
+		this.gridWidth = Math.floor(width / cellSize);
+		this.gridHeight = Math.floor(height / cellSize);
+		this.gridHorizontalPadding = Math.floor((width % cellSize) / 2);
+		this.gridVerticalPadding = Math.floor((height % cellSize) / 2);
+
+		const terrain = new Terrain(this.gridWidth, this.gridHeight);
+		this.cells = terrain.cells;
+	}
+
+	draw(ctx) {
+		ctx.font = `${this.cellSize * 0.6}px serif`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+
+		for (let x = 0; x < this.gridWidth; x++) {
+			for (let y = 0; y < this.gridHeight; y++) {
+				const cell = this.cells[x][y];
+				const cx = this.toCanvasX(x);
+				const cy = this.toCanvasY(y);
+
+				// fondo
+				ctx.fillStyle = cell.color;
+				ctx.fillRect(cx, cy, this.cellSize, this.cellSize);
+
+				// borde
+				ctx.strokeStyle = 'rgba(49, 45, 45, 0.4)';
+				ctx.strokeRect(cx, cy, this.cellSize, this.cellSize);
+
+				// emoji
+				if (cell.emoji) {
+					ctx.fillStyle = 'black';
+					ctx.fillText(
+						cell.emoji,
+						cx + this.cellSize / 2,
+						cy + this.cellSize / 2
+					);
+				}
+			}
+		}
+	}
+
+	toCanvasX(gridX) {
+		return gridX * this.cellSize + this.gridHorizontalPadding;
+	}
+	toCanvasY(gridY) {
+		return gridY * this.cellSize + this.gridVerticalPadding;
+	}
+
+	isValidCell(x, y) {
+		return (
+			x >= 0 &&
+			y >= 0 &&
+			x < this.gridWidth &&
+			y < this.gridHeight &&
+			this.cells[x][y].walkable &&
+			!this.cells[x][y].isOccupied
+		);
+	}
+
+	occupyCell(x, y) {
+		if (this.isValidCell(x, y)) {
+			this.cells[x][y].isOccupied = true;
+		}
+	}
+
+	vacateCell(x, y) {
+		if (x >= 0 && y >= 0 && x < this.gridWidth && y < this.gridHeight) {
+			this.cells[x][y].isOccupied = false;
+		}
+	}
+}
+
+class Terrain {
+	constructor(gridWidth, gridHeight) {
+		this.gridWidth = gridWidth;
+		this.gridHeight = gridHeight;
+		this.cells = this.createEmptyTerrain();
+		this.generateWaterLakes(20);
+		this.generateShore();
+		this.generateRocks(5);
+		this.decorateCells();
+	}
+
+	createEmptyTerrain() {
+		const cells = [];
+		for (let x = 0; x < this.gridWidth; x++) {
+			cells[x] = [];
+			for (let y = 0; y < this.gridHeight; y++) {
+				cells[x][y] = {
+					type: 'grass',
+					walkable: true,
+					isOccupied: false,
+				};
+			}
+		}
+		return cells;
+	}
+
+	generateWaterLakes(maxWaterTiles) {
+		const directions = [
+			[0, 1], // Abajo
+			[1, 0], // Derecha
+			[0, -1], // Arriba
+			[-1, 0], // Izquierda
+		];
+
+		let waterTiles = 0; // Contador de celdas de agua
+		let frontier = []; // Celdas que se pueden expandir
+
+		const startX = Math.floor(Math.random() * this.gridWidth);
+		const startY = Math.floor(Math.random() * this.gridHeight);
+
+		this.cells[startX][startY].type = 'water';
+		this.cells[startX][startY].walkable = false;
+		frontier.push([startX, startY]);
+		waterTiles++;
+
+		while (frontier.length > 0 && waterTiles < maxWaterTiles) {
+			const [x, y] = frontier.shift();
+
+			for (const [dx, dy] of directions) {
+				const nx = x + dx;
+				const ny = y + dy;
+
+				if (
+					nx >= 0 &&
+					ny >= 0 &&
+					nx < this.gridWidth &&
+					ny < this.gridHeight &&
+					this.cells[nx][ny].type === 'grass'
+				) {
+					if (Math.random() >= 0.6) continue;
+
+					this.cells[nx][ny].type = 'water';
+					this.cells[nx][ny].walkable = false;
+					frontier.push([nx, ny]);
+					waterTiles++;
+					if (waterTiles >= maxWaterTiles) break;
+				}
+			}
+		}
+	}
+
+	generateShore() {
+		const directions = [
+			[0, 1], // Abajo
+			[1, 0], // Derecha
+			[0, -1], // Arriba
+			[-1, 0], // Izquierda
+			[-1, -1], // Arriba izquierda
+			[1, -1], // Arriba derecha
+			[-1, 1], // Abajo izquierda
+			[1, 1], // Abajo derecha
+		];
+
+		for (let x = 0; x < this.gridWidth; x++) {
+			for (let y = 0; y < this.gridHeight; y++) {
+				if (this.cells[x][y].type !== 'grass') continue;
+
+				for (const [dx, dy] of directions) {
+					const nx = x + dx;
+					const ny = y + dy;
+					if (
+						nx >= 0 &&
+						ny >= 0 &&
+						nx < this.gridWidth &&
+						ny < this.gridHeight &&
+						this.cells[nx][ny].type === 'water'
+					) {
+						this.cells[x][y].type = 'shore';
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	generateRocks(maxRocks) {
+		let attempts = 0;
+		while (attempts < maxRocks) {
+			attempts++;
+			const x = Math.floor(Math.random() * this.gridWidth);
+			const y = Math.floor(Math.random() * this.gridHeight);
+
+			if (this.cells[x][y].type === 'grass') {
+				this.cells[x][y].type = 'rock';
+			}
+		}
+	}
+
+	decorateCells() {
+		for (let x = 0; x < this.gridWidth; x++) {
+			for (let y = 0; y < this.gridHeight; y++) {
+				const cell = this.cells[x][y];
+				switch (cell.type) {
+					case 'grass':
+						cell.color = '#6abe30';
+						cell.emoji = '🌿';
+						cell.walkable = true;
+						break;
+					case 'water':
+						cell.color = '#3b83bd';
+						cell.emoji = '🌊';
+						cell.walkable = false;
+						break;
+					case 'shore':
+						cell.color = '#b9d97f';
+						cell.emoji = '🏖️';
+						cell.walkable = true;
+						break;
+					case 'rock':
+						cell.color = '#666688';
+						cell.emoji = '🪨';
+						cell.walkable = false;
+						break;
+					default:
+						cell.color = '#ffffff';
+						cell.emoji = '';
+						cell.walkable = true;
+				}
+			}
+		}
+	}
+}
+
 class Character {
-	constructor(areaMaxWidth, areaMaxHeight, spriteSheetSrc) {
+	constructor(grid, spriteSheetSrc) {
+		this.grid = grid;
+
+		// Celda inicial
+		this.gridX = Math.floor(grid.gridWidth / 2);
+		this.gridY = Math.floor(grid.gridHeight / 2);
+
 		this.spriteSheet = new Image();
 		this.spriteSheet.src = spriteSheetSrc;
-
 		this.spriteSheet.onload = () => {
-			this.initCharacterSize(areaMaxWidth, areaMaxHeight);
+			this.characterX = this.grid.toCanvasX(this.gridX);
+			this.characterY = this.grid.toCanvasY(this.gridY);
+			this.targetX = this.characterX;
+			this.targetY = this.characterY;
 		};
 
-		this.frameWidth = 64; // Ancho del sprite
-		this.frameHeight = 64; // Alto del sprite
-		this.frameMax = 4; // Número de frames en la hoja de sprites
-		this.frameIndex = 0; // Índice del frame actual
-		this.frameDelay = 10; // Velocidad de cambio de frame
-		this.frameTimer = 0; // Temporizador para el cambio de frame
+		// Tamaño de sprites
+		this.frameWidth = 64;
+		this.frameHeight = 64;
+		this.frameMax = 4;
+		this.frameIndex = 0;
+		this.frameDelay = 10;
+		this.frameTimer = 0;
+
+		this.speed = 4; // px por frame
+		this.moveCooldown = 4000;
+		this.lastMoveTime = 0;
 
 		this.actions = {
 			walkingDown: 0,
 			walkingLeft: 1,
 			walkingRight: 2,
 			walkingUp: 3,
-		}; // Acciones del personaje basadas en la fila del spritesheet
-		this.currentAction = 'walkingDown'; // Acción actual del personaje
+		};
+		this.currentAction = 'walkingDown';
 
-		this.speed = 1.5; // Velocidad de movimiento del personaje
-		this.areaMaxWidth = areaMaxWidth; // Ancho máximo del área de movimiento
-		this.areaMaxHeight = areaMaxHeight; // Ancho máximo del área de movimiento
-
-		// Estado para comportamiento más natural
-		this.state = 'idle'; // 'idle' o 'moving'
+		this.state = 'idle';
 		this.stateTimer = 0;
 		this.stateDuration = this.getRandomDuration();
-		this.direction = null; // dirección actual durante 'moving'
-	}
-
-	initCharacterSize(areaMaxWidth, areaMaxHeight) {
-		const scale = 2; // Escalamos los 64px a algo más grande (opcional)
-		this.characterWidth = this.frameWidth * scale; // Ancho del personaje
-		this.characterHeight = this.frameHeight * scale; // Alto del personaje
-		this.characterX = areaMaxWidth / 2 - this.characterWidth / 2; // Posición inicial en X
-		this.characterY = areaMaxHeight / 2 - this.characterHeight / 2; // Posición inicial en Y
+		this.direction = null;
 	}
 
 	getRandomDuration() {
-		return Math.floor(Math.random() * 120) + 60; // entre 1s y 3s (60 FPS)
+		return Math.floor(Math.random() * 120) + 60;
 	}
 
 	updateFrame() {
@@ -57,77 +290,107 @@ class Character {
 	}
 
 	doSomething() {
+		const now = Date.now();
 		this.stateTimer++;
 
-		if (this.stateTimer >= this.stateDuration) {
+		if (
+			this.state !== 'moving' &&
+			this.stateTimer >= this.stateDuration &&
+			now - this.lastMoveTime >= this.moveCooldown
+		) {
 			this.stateTimer = 0;
 			this.stateDuration = this.getRandomDuration();
+			this.lastMoveTime = now;
 
 			if (this.state === 'idle') {
-				// Cambiamos a movimiento
 				this.state = 'moving';
 				const directions = ['up', 'down', 'left', 'right'];
 				this.direction =
 					directions[Math.floor(Math.random() * directions.length)];
 			} else {
-				// Cambiamos a idle
 				this.state = 'idle';
 				this.direction = null;
 			}
 		}
 
 		if (this.state === 'moving' && this.direction) {
-			this.move(this.direction);
+			this.tryStartMove(this.direction);
 		}
 
+		this.continueMoving();
 		this.updateFrame();
 	}
 
-	move(direction) {
-		const dx = this.speed;
+	tryStartMove(direction) {
+		let newX = this.gridX;
+		let newY = this.gridY;
+
 		switch (direction) {
 			case 'up':
+				newY--;
 				this.currentAction = 'walkingUp';
-				this.characterY = Math.max(0, this.characterY - dx);
 				break;
 			case 'down':
+				newY++;
 				this.currentAction = 'walkingDown';
-				this.characterY = Math.min(
-					this.areaMaxHeight - this.characterHeight,
-					this.characterY + dx
-				);
 				break;
 			case 'left':
+				newX--;
 				this.currentAction = 'walkingLeft';
-				this.characterX = Math.max(0, this.characterX - dx);
 				break;
 			case 'right':
+				newX++;
 				this.currentAction = 'walkingRight';
-				this.characterX = Math.min(
-					this.areaMaxWidth - this.characterWidth,
-					this.characterX + dx
-				);
 				break;
+		}
+
+		if (this.grid.isValidCell(newX, newY)) {
+			this.grid.vacateCell(this.gridX, this.gridY);
+			this.grid.occupyCell(newX, newY);
+
+			this.gridX = newX;
+			this.gridY = newY;
+			this.targetX = this.grid.toCanvasX(newX);
+			this.targetY = this.grid.toCanvasY(newY);
+			this.state = 'moving';
 		}
 	}
 
-	getCurrentSpriteInfo() {
-		const frameX = this.frameIndex * this.frameWidth;
-		const frameY = this.actions[this.currentAction] * this.frameHeight;
+	continueMoving() {
+		const dx = this.targetX - this.characterX;
+		const dy = this.targetY - this.characterY;
 
-		return {
-			spriteSheet: this.spriteSheet,
-			spriteX: frameX,
-			spriteY: frameY,
-			spriteWidth: this.frameWidth,
-			spriteHeight: this.frameHeight,
-			characterX: this.characterX,
-			characterY: this.characterY,
-			characterWidth: this.characterWidth,
-			characterHeight: this.characterHeight,
-		};
+		if (Math.abs(dx) <= this.speed && Math.abs(dy) <= this.speed) {
+			this.characterX = this.targetX;
+			this.characterY = this.targetY;
+			this.state = 'idle';
+			return;
+		}
+
+		const angle = Math.atan2(dy, dx);
+		this.characterX += Math.cos(angle) * this.speed;
+		this.characterY += Math.sin(angle) * this.speed;
+	}
+
+	draw(ctx) {
+		//const scale = 2;
+		const characterWidth = this.grid.cellSize; //this.frameWidth * scale;
+		const characterHeight = this.grid.cellSize; //this.frameHeight * scale;
+
+		ctx.drawImage(
+			this.spriteSheet,
+			this.frameIndex * this.frameWidth,
+			this.actions[this.currentAction] * this.frameHeight,
+			this.frameWidth,
+			this.frameHeight,
+			this.characterX,
+			this.characterY,
+			characterWidth,
+			characterHeight
+		);
 	}
 }
+
 class Canvas {
 	constructor(canvas, ctx) {
 		this.canvas = canvas;
@@ -135,38 +398,27 @@ class Canvas {
 	}
 
 	start() {
-		const canvasWidth = window.innerWidth; // Ancho del canvas
-		const canvasHeight = window.innerHeight; // Alto del canvas
-		this.canvas.width = canvasWidth; // Ajustar el ancho del canvas al ancho de la ventana
-		this.canvas.height = canvasHeight; // Ajustar la altura del canvas al alto de la ventana
-		this.characters = [
-			new Character(
-				canvasWidth,
-				canvasHeight,
-				'assets/characters/spritesheet_1.png'
-			),
-		];
+		const canvasWidth = window.innerWidth;
+		const canvasHeight = window.innerHeight;
+		this.canvas.width = canvasWidth;
+		this.canvas.height = canvasHeight;
 
-		this.frame(); // Iniciar el bucle de animación
+		this.grid = new Grid(canvasWidth, canvasHeight, CELL_SIZE);
+		this.characters = [new Character(this.grid, CHARACTER_SPRITE)];
+
+		this.frame();
 	}
 
 	draw() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-		this.characters.forEach((character) => {
-			this.drawCharacter(character);
-		});
-		requestAnimationFrame(this.frame.bind(this)); // Animación continua (aunque esté estático por ahora)
-	}
-
-	drawCharacter(character) {
-		this.ctx.drawImage(...Object.values(character.getCurrentSpriteInfo())); // Dibuja el personaje en el canvas
+		this.grid.draw(this.ctx);
+		this.characters.forEach((character) => character.draw(this.ctx));
+		requestAnimationFrame(this.frame.bind(this));
 	}
 
 	frame() {
-		this.characters.forEach((character) => {
-			character.doSomething(); // Llamar a la función de movimiento del personaje
-		});
-		this.draw(); // Llamar a la función de dibujo
+		this.characters.forEach((character) => character.doSomething());
+		this.draw();
 	}
 }
 
