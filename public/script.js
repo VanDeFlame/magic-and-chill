@@ -26,8 +26,8 @@ class Grid {
 		for (let x = 0; x < this.gridWidth; x++) {
 			for (let y = 0; y < this.gridHeight; y++) {
 				const cell = this.cells[x][y];
-				const cx = this.toCanvasX(x);
-				const cy = this.toCanvasY(y);
+				const cx = this.getPxFromX(x);
+				const cy = this.getPxFromY(y);
 
 				// fondo
 				ctx.fillStyle = cell.color;
@@ -50,10 +50,16 @@ class Grid {
 		}
 	}
 
-	toCanvasX(gridX) {
+	getXFromPx(px) {
+		return (px - this.gridHorizontalPadding) / this.cellSize;
+	}
+	getYFromPX(px) {
+		return (px - this.gridVerticalPadding) / this.cellSize;
+	}
+	getPxFromX(gridX) {
 		return gridX * this.cellSize + this.gridHorizontalPadding;
 	}
-	toCanvasY(gridY) {
+	getPxFromY(gridY) {
 		return gridY * this.cellSize + this.gridVerticalPadding;
 	}
 
@@ -291,8 +297,8 @@ class Character {
 		this.grid = grid;
 		this.gridX = Math.floor(grid.gridWidth / 2);
 		this.gridY = Math.floor(grid.gridHeight / 2);
-		this.characterX = this.grid.toCanvasX(this.gridX);
-		this.characterY = this.grid.toCanvasY(this.gridY);
+		this.characterX = this.grid.getPxFromX(this.gridX);
+		this.characterY = this.grid.getPxFromY(this.gridY);
 		this.targetX = this.characterX;
 		this.targetY = this.characterY;
 
@@ -305,10 +311,10 @@ class Character {
 			64, // frameHeight
 			4, // frameMax
 			{
-				walkingDown: 0,
-				walkingLeft: 1,
-				walkingRight: 2,
-				walkingUp: 3,
+				walking_down: 0,
+				walking_left: 1,
+				walking_right: 2,
+				walking_up: 3,
 			}
 		);
 
@@ -337,23 +343,89 @@ class Character {
 			duration: this.getRandomDuration(), // Aleatorio
 		});
 
-		// Movimiento aleatorio hacia una dirección (izquierda, derecha, arriba, abajo)
-		const directions = ['up', 'down', 'left', 'right'];
-		const randomDirection =
-			directions[Math.floor(Math.random() * directions.length)];
-		const randomDuration = Math.floor(Math.random() * 5) + 1; // Duración aleatoria entre 1 y 5 segundos
-
-		this.taskQueue.push({
-			action: 'move',
-			direction: randomDirection,
-			duration: randomDuration,
-		});
+		// Tarea de 'move' a una celda aleatoria
+		this.generateRandomMovementTask();
 
 		// Otro 'idle' corto después de moverse
 		this.taskQueue.push({
 			action: 'idle',
 			duration: this.getRandomDuration(),
 		});
+	}
+
+	// Función para obtener las casillas válidas adyacentes
+	getValidAdjacentCells() {
+		const validCells = [];
+
+		// Direcciones posibles (arriba, abajo, izquierda, derecha)
+		const directions = [
+			{ dx: 0, dy: -1, direction: 'up' }, // Arriba
+			{ dx: 0, dy: 1, direction: 'down' }, // Abajo
+			{ dx: -1, dy: 0, direction: 'left' }, // Izquierda
+			{ dx: 1, dy: 0, direction: 'right' }, // Derecha
+		];
+
+		// Revisamos cada dirección
+		for (const { dx, dy, direction } of directions) {
+			const newX = this.gridX + dx;
+			const newY = this.gridY + dy;
+
+			// Si la casilla es válida, la añadimos a la lista
+			if (this.grid.isValidCell(newX, newY)) {
+				validCells.push({
+					targetX: newX,
+					targetY: newY,
+					direction: direction,
+				});
+			}
+		}
+
+		return validCells;
+	}
+
+	// Generar tareas para moverse hasta una casilla válida aleatoria
+	generateRandomMovementTask() {
+		// Obtenemos las casillas válidas adyacentes
+		const validCells = this.getValidAdjacentCells();
+
+		// Si hay casillas válidas, seleccionamos una aleatoria
+		if (validCells.length > 0) {
+			const randomCell =
+				validCells[Math.floor(Math.random() * validCells.length)];
+
+			// Generamos tareas de movimiento hacia la casilla seleccionada
+			this.taskQueue.push(
+				...this.generateMovementTasks(randomCell.targetX, randomCell.targetY)
+			);
+		}
+	}
+	// Generar tareas para moverse hasta un destino
+	generateMovementTasks(targetX, targetY) {
+		const tasks = [];
+
+		// Mover horizontalmente (si es necesario)
+		if (this.gridX !== targetX) {
+			const directionX = targetX > this.gridX ? 'right' : 'left';
+			tasks.push({
+				action: 'move',
+				direction: directionX,
+				targetX: targetX,
+				targetY: this.gridY,
+			});
+		}
+
+		// Mover verticalmente (si es necesario)
+		if (this.gridY !== targetY) {
+			const directionY = targetY > this.gridY ? 'down' : 'up';
+			tasks.push({
+				action: 'move',
+				direction: directionY,
+				targetX: this.gridX,
+				targetY: targetY,
+			});
+		}
+
+		return tasks;
 	}
 
 	// Función que procesa la cola de tareas
@@ -374,6 +446,9 @@ class Character {
 				this.stateDuration = currentTask.duration;
 				this.stateTimer = 0;
 				this.direction = currentTask.direction;
+				this.targetX = currentTask.targetX;
+				this.targetY = currentTask.targetY;
+				this.animation.setAction(`walking_${this.direction}`);
 			}
 		}
 	}
@@ -392,63 +467,52 @@ class Character {
 		}
 
 		// Ejecutar la acción según el estado
-		if (this.state === 'moving' && this.direction) {
-			this.tryStartMove(this.direction);
+		if (this.state === 'moving') {
+			this.tryMoveToTarget();
 		}
 
-		this.continueMoving();
 		this.updateFrame();
 	}
 
-	tryStartMove(direction) {
-		let newX = this.gridX;
-		let newY = this.gridY;
+	// Función para mover al personaje hacia su destino
+	tryMoveToTarget() {
+		const moveSpeed = this.speed; // Controlar la velocidad de movimiento en píxeles
+		let newX = this.characterX;
+		let newY = this.characterY;
 
-		switch (direction) {
-			case 'up':
-				newY--;
-				this.animation.setAction('walkingUp');
-				break;
-			case 'down':
-				newY++;
-				this.animation.setAction('walkingDown');
-				break;
-			case 'left':
-				newX--;
-				this.animation.setAction('walkingLeft');
-				break;
-			case 'right':
-				newX++;
-				this.animation.setAction('walkingRight');
-				break;
+		// Calcular la posición objetivo en píxeles
+		const targetPxX = this.grid.getPxFromX(this.targetX);
+		const targetPxY = this.grid.getPxFromY(this.targetY);
+
+		// Mover en el eje X
+		if (this.characterX !== targetPxX) {
+			const deltaX = targetPxX - this.characterX;
+			const moveDeltaX =
+				Math.sign(deltaX) * Math.min(Math.abs(deltaX), moveSpeed); // Mueve en pasos pequeños
+			newX = this.characterX + moveDeltaX;
 		}
 
-		if (this.grid.isValidCell(newX, newY)) {
-			this.grid.vacateCell(this.gridX, this.gridY);
-			this.grid.occupyCell(newX, newY);
-
-			this.gridX = newX;
-			this.gridY = newY;
-			this.targetX = this.grid.toCanvasX(newX);
-			this.targetY = this.grid.toCanvasY(newY);
-			this.state = 'moving';
-		}
-	}
-
-	continueMoving() {
-		const dx = this.targetX - this.characterX;
-		const dy = this.targetY - this.characterY;
-
-		if (Math.abs(dx) <= this.speed && Math.abs(dy) <= this.speed) {
-			this.characterX = this.targetX;
-			this.characterY = this.targetY;
-			this.state = 'idle';
-			return;
+		// Mover en el eje Y
+		if (this.characterY !== targetPxY) {
+			const deltaY = targetPxY - this.characterY;
+			const moveDeltaY =
+				Math.sign(deltaY) * Math.min(Math.abs(deltaY), moveSpeed); // Mueve en pasos pequeños
+			newY = this.characterY + moveDeltaY;
 		}
 
-		const angle = Math.atan2(dy, dx);
-		this.characterX += Math.cos(angle) * this.speed;
-		this.characterY += Math.sin(angle) * this.speed;
+		// Si hemos llegado a la casilla de destino, actualizamos el estado
+		if (Math.abs(newX - targetPxX) < 0.1 && Math.abs(newY - targetPxY) < 0.1) {
+			newX = targetPxX;
+			newY = targetPxY;
+			this.gridX = this.targetX; // Actualizamos la posición en el grid
+			this.gridY = this.targetY;
+			this.state = 'idle'; // El personaje ha llegado a su destino
+			this.stateDuration = 0;
+		}
+
+		// Actualizamos las posiciones en píxeles
+		this.characterX = newX;
+		this.characterY = newY;
 	}
 
 	draw(ctx) {
