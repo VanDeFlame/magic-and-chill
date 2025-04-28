@@ -234,39 +234,83 @@ class Terrain {
 	}
 }
 
+class CharacterAnimation {
+	constructor(spriteSheetSrc, frameWidth, frameHeight, frameMax, animationRow) {
+		this.spriteSheet = new Image();
+		this.spriteSheet.src = spriteSheetSrc;
+		this.frameWidth = frameWidth;
+		this.frameHeight = frameHeight;
+		this.frameMax = frameMax;
+		this.animationRow = animationRow;
+
+		this.frameIndex = 0;
+		this.frameTimer = 0;
+		this.frameDelay = 10;
+		this.currentAction = 'idle';
+	}
+
+	updateFrame() {
+		this.frameTimer++;
+		if (this.frameTimer >= this.frameDelay) {
+			this.frameIndex = (this.frameIndex + 1) % this.frameMax;
+			this.frameTimer = 0;
+		}
+	}
+
+	setAction(action) {
+		this.currentAction = action;
+		this.frameIndex = 0; // Reiniciar el índice del fotograma cuando cambie la acción
+	}
+
+	getAnimationRow() {
+		if (this.currentAction in this.animationRow) {
+			return this.animationRow[this.currentAction];
+		}
+		return 0; // Fila por defecto si no se encuentra la acción
+	}
+
+	draw(ctx, x, y, width, height) {
+		if (!this.spriteSheet.complete) return; // Esperar a que la hoja de sprites esté cargada
+
+		ctx.drawImage(
+			this.spriteSheet,
+			this.frameIndex * this.frameWidth,
+			this.getAnimationRow() * this.frameHeight,
+			this.frameWidth,
+			this.frameHeight,
+			x,
+			y,
+			width,
+			height
+		);
+	}
+}
+
 class Character {
-	constructor(grid, spriteSheetSrc) {
+	constructor(grid) {
 		this.grid = grid;
 		this.gridX = Math.floor(grid.gridWidth / 2);
 		this.gridY = Math.floor(grid.gridHeight / 2);
-		this.spriteSheet = new Image();
-		this.spriteSheet.src = spriteSheetSrc;
-		this.spriteSheet.onload = () => {
-			this.characterX = this.grid.toCanvasX(this.gridX);
-			this.characterY = this.grid.toCanvasY(this.gridY);
-			this.targetX = this.characterX;
-			this.targetY = this.characterY;
-		};
+		this.characterX = this.grid.toCanvasX(this.gridX);
+		this.characterY = this.grid.toCanvasY(this.gridY);
+		this.targetX = this.characterX;
+		this.targetY = this.characterY;
 
-		// Tamaño de sprites
-		this.frameWidth = 64;
-		this.frameHeight = 64;
-		this.frameMax = 4;
-		this.frameIndex = 0;
-		this.frameDelay = 10;
-		this.frameTimer = 0;
+		this.speed = 2;
 
-		this.speed = 4; // px por frame
-		this.moveCooldown = 4000;
-		this.lastMoveTime = 0;
-
-		this.actions = {
-			walkingDown: 0,
-			walkingLeft: 1,
-			walkingRight: 2,
-			walkingUp: 3,
-		};
-		this.currentAction = 'walkingDown';
+		// Configurar la animación
+		this.animation = new CharacterAnimation(
+			CHARACTER_SPRITE,
+			64, // frameWidth
+			64, // frameHeight
+			4, // frameMax
+			{
+				walkingDown: 0,
+				walkingLeft: 1,
+				walkingRight: 2,
+				walkingUp: 3,
+			}
+		);
 
 		this.state = 'idle';
 		this.stateTimer = 0;
@@ -282,11 +326,7 @@ class Character {
 	}
 
 	updateFrame() {
-		this.frameTimer++;
-		if (this.frameTimer >= this.frameDelay) {
-			this.frameIndex = (this.frameIndex + 1) % this.frameMax;
-			this.frameTimer = 0;
-		}
+		this.animation.updateFrame();
 	}
 
 	// Generar tareas aleatorias para el personaje
@@ -367,19 +407,19 @@ class Character {
 		switch (direction) {
 			case 'up':
 				newY--;
-				this.currentAction = 'walkingUp';
+				this.animation.setAction('walkingUp');
 				break;
 			case 'down':
 				newY++;
-				this.currentAction = 'walkingDown';
+				this.animation.setAction('walkingDown');
 				break;
 			case 'left':
 				newX--;
-				this.currentAction = 'walkingLeft';
+				this.animation.setAction('walkingLeft');
 				break;
 			case 'right':
 				newX++;
-				this.currentAction = 'walkingRight';
+				this.animation.setAction('walkingRight');
 				break;
 		}
 
@@ -412,15 +452,13 @@ class Character {
 	}
 
 	draw(ctx) {
+		if (!this.animation) return;
+
 		const characterWidth = this.grid.cellSize;
 		const characterHeight = this.grid.cellSize;
 
-		ctx.drawImage(
-			this.spriteSheet,
-			this.frameIndex * this.frameWidth,
-			this.actions[this.currentAction] * this.frameHeight,
-			this.frameWidth,
-			this.frameHeight,
+		this.animation.draw(
+			ctx,
 			this.characterX,
 			this.characterY,
 			characterWidth,
@@ -442,7 +480,7 @@ class Canvas {
 		this.canvas.height = canvasHeight;
 
 		this.grid = new Grid(canvasWidth, canvasHeight, CELL_SIZE);
-		this.characters = [new Character(this.grid, CHARACTER_SPRITE)];
+		this.characters = [new Character(this.grid)];
 
 		this.frame();
 	}
