@@ -237,11 +237,8 @@ class Terrain {
 class Character {
 	constructor(grid, spriteSheetSrc) {
 		this.grid = grid;
-
-		// Celda inicial
 		this.gridX = Math.floor(grid.gridWidth / 2);
 		this.gridY = Math.floor(grid.gridHeight / 2);
-
 		this.spriteSheet = new Image();
 		this.spriteSheet.src = spriteSheetSrc;
 		this.spriteSheet.onload = () => {
@@ -275,10 +272,13 @@ class Character {
 		this.stateTimer = 0;
 		this.stateDuration = this.getRandomDuration();
 		this.direction = null;
+
+		// Cola de tareas
+		this.taskQueue = [];
 	}
 
 	getRandomDuration() {
-		return Math.floor(Math.random() * 120) + 60;
+		return Math.floor(Math.random() * 120) + 60; // Genera una duración entre 60 y 180 ms
 	}
 
 	updateFrame() {
@@ -289,30 +289,69 @@ class Character {
 		}
 	}
 
-	doSomething() {
-		const now = Date.now();
-		this.stateTimer++;
+	// Generar tareas aleatorias para el personaje
+	generateRandomTasks() {
+		// Tarea de 'idle' corto
+		this.taskQueue.push({
+			action: 'idle',
+			duration: this.getRandomDuration(), // Aleatorio
+		});
 
-		if (
-			this.state !== 'moving' &&
-			this.stateTimer >= this.stateDuration &&
-			now - this.lastMoveTime >= this.moveCooldown
-		) {
-			this.stateTimer = 0;
-			this.stateDuration = this.getRandomDuration();
-			this.lastMoveTime = now;
+		// Movimiento aleatorio hacia una dirección (izquierda, derecha, arriba, abajo)
+		const directions = ['up', 'down', 'left', 'right'];
+		const randomDirection =
+			directions[Math.floor(Math.random() * directions.length)];
+		const randomDuration = Math.floor(Math.random() * 5) + 1; // Duración aleatoria entre 1 y 5 segundos
 
-			if (this.state === 'idle') {
-				this.state = 'moving';
-				const directions = ['up', 'down', 'left', 'right'];
-				this.direction =
-					directions[Math.floor(Math.random() * directions.length)];
-			} else {
+		this.taskQueue.push({
+			action: 'move',
+			direction: randomDirection,
+			duration: randomDuration,
+		});
+
+		// Otro 'idle' corto después de moverse
+		this.taskQueue.push({
+			action: 'idle',
+			duration: this.getRandomDuration(),
+		});
+	}
+
+	// Función que procesa la cola de tareas
+	processTaskQueue() {
+		if (this.taskQueue.length > 0) {
+			const currentTask = this.taskQueue.shift();
+
+			// Si la tarea es 'idle', hacer nada por el tiempo dado
+			if (currentTask.action === 'idle') {
 				this.state = 'idle';
-				this.direction = null;
+				this.stateDuration = currentTask.duration;
+				this.stateTimer = 0;
+			}
+
+			// Si la tarea es 'move', mover al personaje en la dirección indicada
+			if (currentTask.action === 'move') {
+				this.state = 'moving';
+				this.stateDuration = currentTask.duration;
+				this.stateTimer = 0;
+				this.direction = currentTask.direction;
 			}
 		}
+	}
 
+	doSomething() {
+		this.stateTimer++;
+
+		// Generar nuevas tareas cuando no haya tareas pendientes
+		if (this.state === 'idle' && this.taskQueue.length === 0) {
+			this.generateRandomTasks();
+		}
+
+		// Procesar la cola de tareas
+		if (this.stateDuration - this.stateTimer <= 0) {
+			this.processTaskQueue();
+		}
+
+		// Ejecutar la acción según el estado
 		if (this.state === 'moving' && this.direction) {
 			this.tryStartMove(this.direction);
 		}
@@ -373,9 +412,8 @@ class Character {
 	}
 
 	draw(ctx) {
-		//const scale = 2;
-		const characterWidth = this.grid.cellSize; //this.frameWidth * scale;
-		const characterHeight = this.grid.cellSize; //this.frameHeight * scale;
+		const characterWidth = this.grid.cellSize;
+		const characterHeight = this.grid.cellSize;
 
 		ctx.drawImage(
 			this.spriteSheet,
