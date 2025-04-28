@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 
 const CELL_SIZE = 64; // Tamaño de cada celda en píxeles
 const CHARACTER_SPRITE = 'assets/characters/spritesheet_1.png'; // Ruta de la hoja de sprites del personaje
+const DEBUG_MODE = false; // Modo de depuración
 
 class Grid {
 	constructor(width, height, cellSize) {
@@ -45,6 +46,24 @@ class Grid {
 						cx + this.cellSize / 2,
 						cy + this.cellSize / 2
 					);
+				}
+
+				if (DEBUG_MODE) {
+					const defaultFont = ctx.font;
+					ctx.font = `${this.cellSize * 0.2}px serif`;
+					ctx.fillStyle = 'black';
+					ctx.fillText(
+						`[${x}, ${y}]`,
+						cx + this.cellSize / 2,
+						cy + this.cellSize / 2 - this.cellSize * 0.3
+					);
+					ctx.fillText(
+						cell.type,
+						cx + this.cellSize / 2,
+						cy + this.cellSize / 2 + this.cellSize * 0.3
+					);
+					ctx.font = defaultFont; // Restaurar fuente por defecto
+					ctx.fillStyle = 'normal'; // Restaurar color por defecto
 				}
 			}
 		}
@@ -553,12 +572,40 @@ class Canvas {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.grid.draw(this.ctx);
 		this.characters.forEach((character) => character.draw(this.ctx));
+
+		// Debug Mode Overlay
+		if (DEBUG_MODE) {
+			this.drawDebugOverlay();
+		}
 		requestAnimationFrame(this.frame.bind(this));
 	}
 
 	frame() {
 		this.characters.forEach((character) => character.doSomething());
 		this.draw();
+	}
+
+	// Function to draw the debug overlay
+	drawDebugOverlay() {
+		const characterZero = this.characters[0];
+		const info = [
+			`Grid: [${characterZero.gridX}, ${characterZero.gridY}] -> [${characterZero.targetX}, ${characterZero.targetY}]`,
+			`X: ${Math.floor(characterZero.characterX)}, Y: ${Math.floor(
+				characterZero.characterY
+			)}`,
+			`State: ${characterZero.state} - Duration: ${characterZero.stateDuration} ms`,
+			`Task Queue: ${characterZero.taskQueue.length}`,
+		];
+
+		this.ctx.font = '20px Arial';
+		this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+		this.ctx.fillRect(0, 0, 400, 40 + info.length * 30); // Semi-transparent background
+		this.ctx.textAlign = 'start';
+		this.ctx.textBaseline = 'top';
+		this.ctx.fillStyle = 'black';
+		info.map((text, index) => {
+			this.ctx.fillText(text, 10, 30 + index * 30);
+		});
 	}
 }
 
