@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 
 const CELL_SIZE = 64; // Tamaño de cada celda en píxeles
 const CHARACTER_SPRITE = 'assets/characters/spritesheet_1.png'; // Ruta de la hoja de sprites del personaje
+const CHARACTER_SPRITE_2 = 'assets/characters/spritesheet_2.png'; // Ruta de la hoja de sprites del personaje
 const DEBUG_MODE = false; // Modo de depuración
 
 class Grid {
@@ -49,6 +50,11 @@ class Grid {
 				}
 
 				if (DEBUG_MODE) {
+					if (cell.isOccupied) {
+						ctx.fillStyle = 'rgba(200, 45, 45, 0.4)';
+						ctx.fillRect(cx, cy, this.cellSize, this.cellSize);
+					}
+
 					const defaultFont = ctx.font;
 					ctx.font = `${this.cellSize * 0.2}px serif`;
 					ctx.fillStyle = 'black';
@@ -82,27 +88,40 @@ class Grid {
 		return gridY * this.cellSize + this.gridVerticalPadding;
 	}
 
-	isValidCell(x, y) {
+	isValidCell(x, y, ignoreOccupied = false) {
 		return (
 			x >= 0 &&
 			y >= 0 &&
 			x < this.gridWidth &&
 			y < this.gridHeight &&
 			this.cells[x][y].walkable &&
-			!this.cells[x][y].isOccupied
+			(ignoreOccupied || !this.cells[x][y].isOccupied)
 		);
 	}
 
 	occupyCell(x, y) {
-		if (this.isValidCell(x, y)) {
+		if (this.isValidCell(x, y, true)) {
 			this.cells[x][y].isOccupied = true;
 		}
 	}
 
 	vacateCell(x, y) {
-		if (x >= 0 && y >= 0 && x < this.gridWidth && y < this.gridHeight) {
+		if (this.isValidCell(x, y, true)) {
 			this.cells[x][y].isOccupied = false;
 		}
+	}
+
+	getRandomValidCell(ignoreOccupied = false, maxAttempts = 100) {
+		for (let i = 0; i < maxAttempts; i++) {
+			const x = Math.floor(Math.random() * this.gridWidth);
+			const y = Math.floor(Math.random() * this.gridHeight);
+
+			if (this.isValidCell(x, y, ignoreOccupied)) {
+				return { x, y };
+			}
+		}
+
+		return null; // no encontró ninguna válida
 	}
 }
 
@@ -314,8 +333,8 @@ class CharacterAnimation {
 class Character {
 	constructor(grid) {
 		this.grid = grid;
-		this.gridX = Math.floor(grid.gridWidth / 2);
-		this.gridY = Math.floor(grid.gridHeight / 2);
+		const { x: validSpawnX, y: validSpawnY } = grid.getRandomValidCell();
+		this.moveToGridCell(validSpawnX, validSpawnY, true);
 		this.characterX = this.grid.getPxFromX(this.gridX);
 		this.characterY = this.grid.getPxFromY(this.gridY);
 		this.targetX = this.characterX;
@@ -325,22 +344,27 @@ class Character {
 
 		// Configurar la animación
 		this.animation = new CharacterAnimation(
-			CHARACTER_SPRITE,
-			64, // frameWidth
-			64, // frameHeight
+			Math.random() >= 0.5 ? CHARACTER_SPRITE : CHARACTER_SPRITE_2,
+			128, // frameWidth
+			128, // frameHeight
 			4, // frameMax
 			{
-				walking_down: 0,
-				walking_left: 1,
-				walking_right: 2,
-				walking_up: 3,
+				idle_down: 0,
+				idle_left: 1,
+				idle_right: 2,
+				idle_up: 3,
+				walking_down: 4,
+				walking_left: 5,
+				walking_right: 6,
+				walking_up: 7,
+				dancing: 8,
 			}
 		);
 
 		this.state = 'idle';
 		this.stateTimer = 0;
 		this.stateDuration = this.getRandomDuration();
-		this.direction = null;
+		this.direction = 'down';
 
 		// Cola de tareas
 		this.taskQueue = [];
@@ -363,7 +387,14 @@ class Character {
 		});
 
 		// Tarea de 'move' a una celda aleatoria
-		this.generateRandomMovementTask();
+		if (Math.random() < 0.1) {
+			this.taskQueue.push({
+				action: 'dancing',
+				duration: this.getRandomDuration(), // Aleatorio
+			});
+		} else {
+			this.generateRandomMovementTask();
+		}
 
 		// Otro 'idle' corto después de moverse
 		this.taskQueue.push({
@@ -449,18 +480,37 @@ class Character {
 
 	// Función que procesa la cola de tareas
 	processTaskQueue() {
-		if (this.taskQueue.length > 0) {
-			const currentTask = this.taskQueue.shift();
+		if (!this.taskQueue.length) return;
+		const currentTask = this.taskQueue.shift();
 
+		switch (currentTask.action) {
 			// Si la tarea es 'idle', hacer nada por el tiempo dado
-			if (currentTask.action === 'idle') {
+			case 'idle': {
 				this.state = 'idle';
 				this.stateDuration = currentTask.duration;
 				this.stateTimer = 0;
+				this.animation.setAction(`idle_${this.direction}`);
+				break;
 			}
-
+			case 'dancing': {
+				this.state = 'dancing';
+				this.stateDuration = currentTask.duration;
+				this.stateTimer = 0;
+				this.animation.setAction(`dancing`);
+				break;
+			}
 			// Si la tarea es 'move', mover al personaje en la dirección indicada
-			if (currentTask.action === 'move') {
+			case 'move': {
+				if (!this.grid.isValidCell(currentTask.targetX, currentTask.targetY)) {
+					this.taskQueue.unshift(
+						{
+							action: 'idle',
+							duration: this.getRandomDuration(), // Aleatorio
+						},
+						currentTask
+					); // Reinsertar la tarea de movimiento
+					break;
+				}
 				this.state = 'moving';
 				this.stateDuration = currentTask.duration;
 				this.stateTimer = 0;
@@ -468,7 +518,17 @@ class Character {
 				this.targetX = currentTask.targetX;
 				this.targetY = currentTask.targetY;
 				this.animation.setAction(`walking_${this.direction}`);
+				this.grid.occupyCell(this.targetX, this.targetY); // Ocupamos la celda de destino
+				break;
 			}
+		}
+	}
+
+	moveToGridCell(x, y, occupy = false) {
+		this.gridX = x;
+		this.gridY = y;
+		if (occupy) {
+			this.grid.occupyCell(x, y); // Ocupamos la celda de destino
 		}
 	}
 
@@ -521,10 +581,10 @@ class Character {
 
 		// Si hemos llegado a la casilla de destino, actualizamos el estado
 		if (Math.abs(newX - targetPxX) < 0.1 && Math.abs(newY - targetPxY) < 0.1) {
+			this.grid.vacateCell(this.gridX, this.gridY); // Liberamos la celda anterior
 			newX = targetPxX;
 			newY = targetPxY;
-			this.gridX = this.targetX; // Actualizamos la posición en el grid
-			this.gridY = this.targetY;
+			this.moveToGridCell(this.targetX, this.targetY); // Actualizamos la posición en el grid
 			this.state = 'idle'; // El personaje ha llegado a su destino
 			this.stateDuration = 0;
 		}
@@ -563,7 +623,16 @@ class Canvas {
 		this.canvas.height = canvasHeight;
 
 		this.grid = new Grid(canvasWidth, canvasHeight, CELL_SIZE);
-		this.characters = [new Character(this.grid)];
+		this.characters = [
+			new Character(this.grid),
+			new Character(this.grid),
+			new Character(this.grid),
+			new Character(this.grid),
+			new Character(this.grid),
+			new Character(this.grid),
+			new Character(this.grid),
+			new Character(this.grid),
+		];
 
 		this.frame();
 	}
@@ -587,15 +656,15 @@ class Canvas {
 
 	// Function to draw the debug overlay
 	drawDebugOverlay() {
-		const characterZero = this.characters[0];
-		const info = [
-			`Grid: [${characterZero.gridX}, ${characterZero.gridY}] -> [${characterZero.targetX}, ${characterZero.targetY}]`,
-			`X: ${Math.floor(characterZero.characterX)}, Y: ${Math.floor(
-				characterZero.characterY
+		const info = this.characters.flatMap((character) => [
+			`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
+			`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
+				character.characterY
 			)}`,
-			`State: ${characterZero.state} - Duration: ${characterZero.stateDuration} ms`,
-			`Task Queue: ${characterZero.taskQueue.length}`,
-		];
+			`State: ${character.state} - Duration: ${character.stateDuration} ms`,
+			`Animation: ${character.animation.currentAction}`,
+			`Task Queue: ${character.taskQueue.length}`,
+		]);
 
 		this.ctx.font = '20px Arial';
 		this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
