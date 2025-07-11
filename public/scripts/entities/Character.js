@@ -1,9 +1,11 @@
 import { CharacterAnimation } from './animations/CharacterAnimation.js';
-import { CHARACTER_SPRITE, CHARACTER_SPRITE_2 } from './../core/Constants.js';
+import { CHARACTER_SPRITES } from './../core/Constants.js';
 
 export class Character {
-	constructor(grid) {
+	constructor(grid, team) {
 		this.grid = grid;
+		this.team = team;
+
 		const { x: validSpawnX, y: validSpawnY } = grid.getRandomValidCell();
 		this.moveToGridCell(validSpawnX, validSpawnY, true);
 		this.characterX = this.grid.getPxFromX(this.gridX);
@@ -14,8 +16,9 @@ export class Character {
 		this.speed = 2;
 
 		// Configurar la animación
+		const spritesheet = CHARACTER_SPRITES[team.color];
 		this.animation = new CharacterAnimation(
-			Math.random() >= 0.5 ? CHARACTER_SPRITE : CHARACTER_SPRITE_2,
+			spritesheet,
 			128, // frameWidth
 			128, // frameHeight
 			4, // frameMax
@@ -278,5 +281,15 @@ export class Character {
 			characterWidth,
 			characterHeight
 		);
+	}
+
+	generateDebugInfo() {
+		return [
+			`Grid: [${this.gridX}, ${this.gridY}] -> [${this.targetX}, ${this.targetY}]`,
+			`X: ${Math.floor(this.characterX)}, Y: ${Math.floor(this.characterY)}`,
+			`State: ${this.state} - Duration: ${this.stateDuration} ms`,
+			`Animation: ${this.animation.currentAction}`,
+			`Task Queue: ${this.taskQueue.length}`,
+		];
 	}
 }

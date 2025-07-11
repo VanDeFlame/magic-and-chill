@@ -1,6 +1,7 @@
-import { CELL_SIZE, DEBUG_MODE } from './Constants.js';
+import { CELL_SIZE, DEBUG_MODE, TEAM_COLORS_ENUM } from './Constants.js';
 import { Grid } from '../grid/Grid.js';
 import { Character } from './../entities/Character.js';
+import { Team } from './Team.js';
 
 export class Game {
 	constructor(canvas) {
@@ -9,15 +10,9 @@ export class Game {
 
 	start() {
 		this.grid = new Grid(this.canvas.width, this.canvas.height, CELL_SIZE);
-		this.characters = [
-			new Character(this.grid),
-			new Character(this.grid),
-			new Character(this.grid),
-			new Character(this.grid),
-			new Character(this.grid),
-			new Character(this.grid),
-			new Character(this.grid),
-			new Character(this.grid),
+		this.teams = [
+			new Team(this.grid, TEAM_COLORS_ENUM.BLUE, 4),
+			new Team(this.grid, TEAM_COLORS_ENUM.RED, 4),
 		];
 
 		this.step();
@@ -26,7 +21,7 @@ export class Game {
 	generateFrame() {
 		this.canvas.draw();
 		this.grid.draw(this.canvas.ctx);
-		this.characters.forEach((character) => character.draw(this.canvas.ctx));
+		this.teams.forEach((team) => team.draw(this.canvas.ctx));
 
 		// Debug Mode Overlay
 		if (DEBUG_MODE) {
@@ -35,24 +30,13 @@ export class Game {
 	}
 
 	step() {
-		this.characters.forEach((character) => character.doSomething());
+		this.teams.forEach((team) => team.manageTeamActions());
 		this.generateFrame();
 		requestAnimationFrame(this.step.bind(this));
 	}
 
 	generateDebugInfo() {
-		const info = this.characters.flatMap((character) => [
-			`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
-			`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
-				character.characterY
-			)}`,
-			`State: ${character.state} - Duration: ${character.stateDuration} ms`,
-			`Animation: ${character.animation.currentAction}`,
-			`Task Queue: ${character.taskQueue.length}`,
-			'',
-		]);
-
-		info.unshift(`Characters #: ${this.characters.length}`, '');
+		const info = this.teams.flatMap((team) => team.generateDebugInfo());
 
 		this.canvas.drawDebugOverlay(info);
 	}
