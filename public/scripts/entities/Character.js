@@ -14,7 +14,7 @@ export class Character {
 		this.targetY = this.characterY;
 
 		this.speed = 2;
-
+		this.team = team;
 		// Configurar la animación
 		const spritesheet = CHARACTER_SPRITES[team.color];
 		this.animation = new CharacterAnimation(
@@ -170,6 +170,7 @@ export class Character {
 				this.state = 'dancing';
 				this.stateDuration = currentTask.duration;
 				this.stateTimer = 0;
+				this.team.addPoints();
 				this.animation.setAction(`dancing`);
 				break;
 			}

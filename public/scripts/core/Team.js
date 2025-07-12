@@ -5,6 +5,7 @@ export class Team {
 		this.color = color;
 		this.grid = grid;
 		this._members = new Map();
+		this.points = 0;
 
 		this.addNumberOfMembers(initialMembersQuantity);
 	}
@@ -12,6 +13,14 @@ export class Team {
 	addMage() {
 		const id = this.membersQuantity;
 		this._members.set(id, new Character(this.grid, this));
+	}
+
+	addPoints() {
+		this.points++;
+
+		if (this.points % 20 === 0) {
+			this.addMage();
+		}
 	}
 
 	get members() {
@@ -39,12 +48,15 @@ export class Team {
 	generateDebugInfo() {
 		const info = [
 			`<= TEAM ${this.color} =>`,
+			`Points #: ${this.points}`,
 			`Characters #: ${this.membersQuantity}`,
 		];
+		info.push('');
 
 		this._members.forEach((member, i) =>
 			info.push(`== character ${i} ==`, ...member.generateDebugInfo())
 		);
+		info.push('', '');
 		return info;
 	}
 }
