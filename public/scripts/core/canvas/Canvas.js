@@ -67,8 +67,8 @@ export class Canvas {
 
 		this.canvas.addEventListener('mousemove', (e) => {
 			if (isMiddleButtonPressed && lastPos) {
-				const deltaX = e.clientX - lastPos.x;
-				const deltaY = e.clientY - lastPos.y;
+				const deltaX = lastPos.x - e.clientX;
+				const deltaY = lastPos.y - e.clientY;
 
 				this.moveCameraPosition({ deltaX, deltaY });
 
