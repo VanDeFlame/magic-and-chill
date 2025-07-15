@@ -1,4 +1,5 @@
 import { CELL_SIZE, MAP_SIZE } from '../core/Constants.js';
+import { clamp } from './clamp.function.js';
 
 function getCoordFromPx(px) {
 	return Math.round(px / CELL_SIZE);
@@ -9,28 +10,12 @@ function getPxFromCoord(coord) {
 }
 export function getXFromPX(px) {
 	const coordX = getCoordFromPx(px);
-	if (coordX >= MAP_SIZE.width) {
-		return MAP_SIZE.width;
-	}
-
-	if (coordX <= 0) {
-		return 0;
-	}
-
-	return coordX;
+	return clamp(coordX, 0, MAP_SIZE.width);
 }
 
 export function getYFromPX(px) {
 	const coordY = getCoordFromPx(px);
-	if (coordY >= MAP_SIZE.height) {
-		return MAP_SIZE.height;
-	}
-
-	if (coordY <= 0) {
-		return 0;
-	}
-
-	return coordY;
+	return clamp(coordY, 0, MAP_SIZE.height);
 }
 
 export function getPxFromX(gridX) {

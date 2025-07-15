@@ -3,6 +3,7 @@ import {
 	getPxFromX,
 	getPxFromY,
 } from '../../utils/convertCoordsToPixels.function.js';
+import { clamp } from '../../utils/clamp.function.js';
 export class Canvas {
 	constructor(canvas) {
 		this.canvas = canvas;
@@ -17,6 +18,7 @@ export class Canvas {
 		this.cameraPositionYMax = getPxFromY(MAP_SIZE.height + 1) - canvasHeight;
 
 		this.setupKeyEvents();
+		this.setupMouseEvents();
 	}
 
 	get width() {
@@ -31,6 +33,7 @@ export class Canvas {
 		this.canvas.addEventListener('click', () => {
 			this.canvas.focus();
 		});
+
 		this.canvas.addEventListener('keydown', (e) => {
 			const directions = {
 				ArrowLeft: 'left',
@@ -39,38 +42,71 @@ export class Canvas {
 				ArrowRight: 'right',
 			};
 			if (e.code in directions) {
-				this.moveCameraPosition(directions[e.code]);
+				const directionsDeltas = {
+					left: { deltaX: -20, deltaY: 0 },
+					up: { deltaX: 0, deltaY: -20 },
+					down: { deltaX: 0, deltaY: 20 },
+					right: { deltaX: 20, deltaY: 0 },
+				};
+				this.moveCameraPosition(directionsDeltas[directions[e.code]]);
 			}
 		});
 	}
 
-	moveCameraPosition(direction) {
-		const movementSpeed = 20;
-		switch (direction) {
-			case 'up':
-				const newPositionUp = this.cameraPositionY - movementSpeed;
-				this.cameraPositionY = newPositionUp > 0 ? newPositionUp : 0;
-				break;
-			case 'down':
-				const newPositionDown = this.cameraPositionY + movementSpeed;
-				this.cameraPositionY =
-					newPositionDown < this.cameraPositionYMax
-						? newPositionDown
-						: this.cameraPositionYMax;
-				break;
-			case 'left':
-				const newPositionLeft = this.cameraPositionX - movementSpeed;
-				this.cameraPositionX = newPositionLeft > 0 ? newPositionLeft : 0;
-				break;
-			case 'right':
-				const newPositionRight = this.cameraPositionX + movementSpeed;
-				this.cameraPositionX =
-					newPositionRight < this.cameraPositionXMax
-						? newPositionRight
-						: this.cameraPositionXMax;
-				break;
-			default:
-				break;
+	setupMouseEvents() {
+		let isMiddleButtonPressed = false;
+		let lastPos = null;
+
+		this.canvas.addEventListener('mousedown', (e) => {
+			if (e.button === 1) {
+				isMiddleButtonPressed = true;
+				lastPos = { x: e.clientX, y: e.clientY };
+				e.preventDefault();
+			}
+		});
+
+		this.canvas.addEventListener('mousemove', (e) => {
+			if (isMiddleButtonPressed && lastPos) {
+				const deltaX = e.clientX - lastPos.x;
+				const deltaY = e.clientY - lastPos.y;
+
+				this.moveCameraPosition({ deltaX, deltaY });
+
+				lastPos = { x: e.clientX, y: e.clientY };
+			}
+		});
+
+		this.canvas.addEventListener('mouseup', (e) => {
+			if (e.button === 1) {
+				isMiddleButtonPressed = false;
+				lastPos = null;
+			}
+		});
+
+		document.addEventListener('mouseup', (e) => {
+			if (e.button === 1) {
+				isMiddleButtonPressed = false;
+				lastPos = null;
+			}
+		});
+	}
+
+	moveCameraPosition({ deltaX, deltaY }) {
+		if (deltaX) {
+			const newPositionHorizontal = this.cameraPositionX + deltaX;
+			this.cameraPositionX = clamp(
+				newPositionHorizontal,
+				0,
+				this.cameraPositionXMax
+			);
+		}
+		if (deltaY) {
+			const newPositionVertical = this.cameraPositionY + deltaY;
+			this.cameraPositionY = clamp(
+				newPositionVertical,
+				0,
+				this.cameraPositionYMax
+			);
 		}
 	}
 
