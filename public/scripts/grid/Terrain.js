@@ -11,9 +11,9 @@ export class Terrain {
 
 	createEmptyTerrain() {
 		const cells = [];
-		for (let x = 0; x < this.gridWidth; x++) {
+		for (let x = 0; x <= this.gridWidth; x++) {
 			cells[x] = [];
-			for (let y = 0; y < this.gridHeight; y++) {
+			for (let y = 0; y <= this.gridHeight; y++) {
 				cells[x][y] = {
 					type: 'grass',
 					walkable: true,
@@ -52,8 +52,8 @@ export class Terrain {
 				if (
 					nx >= 0 &&
 					ny >= 0 &&
-					nx < this.gridWidth &&
-					ny < this.gridHeight &&
+					nx <= this.gridWidth &&
+					ny <= this.gridHeight &&
 					this.cells[nx][ny].type === 'grass'
 				) {
 					if (Math.random() >= 0.6) continue;
@@ -80,8 +80,8 @@ export class Terrain {
 			[1, 1], // Abajo derecha
 		];
 
-		for (let x = 0; x < this.gridWidth; x++) {
-			for (let y = 0; y < this.gridHeight; y++) {
+		for (let x = 0; x <= this.gridWidth; x++) {
+			for (let y = 0; y <= this.gridHeight; y++) {
 				if (this.cells[x][y].type !== 'grass') continue;
 
 				for (const [dx, dy] of directions) {
@@ -116,8 +116,8 @@ export class Terrain {
 	}
 
 	decorateCells() {
-		for (let x = 0; x < this.gridWidth; x++) {
-			for (let y = 0; y < this.gridHeight; y++) {
+		for (let x = 0; x <= this.gridWidth; x++) {
+			for (let y = 0; y <= this.gridHeight; y++) {
 				const cell = this.cells[x][y];
 				switch (cell.type) {
 					case 'grass':

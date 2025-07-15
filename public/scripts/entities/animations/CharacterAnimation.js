@@ -33,19 +33,22 @@ export class CharacterAnimation {
 		return 0; // Fila por defecto si no se encuentra la acción
 	}
 
-	draw(ctx, x, y, width, height) {
-		if (!this.spriteSheet.complete) return; // Esperar a que la hoja de sprites esté cargada
+	generateDrawInfo(x, y, width, height) {
+		if (!this.spriteSheet.complete) return []; // Esperar a que la hoja de sprites esté cargada
 
-		ctx.drawImage(
-			this.spriteSheet,
-			this.frameIndex * this.frameWidth,
-			this.getAnimationRow() * this.frameHeight,
-			this.frameWidth,
-			this.frameHeight,
-			x,
-			y,
-			width,
-			height
-		);
+		return [
+			{
+				image: this.spriteSheet,
+				sx: this.frameIndex * this.frameWidth,
+				sy: this.getAnimationRow() * this.frameHeight,
+				sWidth: this.frameWidth,
+				sHeight: this.frameHeight,
+				x,
+				y,
+				width,
+				height,
+				action: 'drawImage',
+			},
+		];
 	}
 }

@@ -1,4 +1,4 @@
-import { CELL_SIZE, DEBUG_MODE } from './Constants.js';
+import { DEBUG_MODE } from './Constants.js';
 import { Grid } from '../grid/Grid.js';
 import { Character } from './../entities/Character.js';
 
@@ -8,7 +8,7 @@ export class Game {
 	}
 
 	start() {
-		this.grid = new Grid(this.canvas.width, this.canvas.height, CELL_SIZE);
+		this.grid = new Grid(this.canvas);
 		this.characters = [
 			new Character(this.grid),
 			new Character(this.grid),
@@ -24,14 +24,13 @@ export class Game {
 	}
 
 	generateFrame() {
-		this.canvas.draw();
-		this.grid.draw(this.canvas.ctx);
-		this.characters.forEach((character) => character.draw(this.canvas.ctx));
-
-		// Debug Mode Overlay
-		if (DEBUG_MODE) {
-			this.generateDebugInfo();
-		}
+		this.canvas.draw({
+			grid: [
+				...this.grid.generateDrawInfo(),
+				...this.characters.flatMap((character) => character.generateDrawInfo()),
+			],
+			hud: this.generateDebugInfo(),
+		});
 	}
 
 	step() {
@@ -41,6 +40,7 @@ export class Game {
 	}
 
 	generateDebugInfo() {
+		if (!DEBUG_MODE) return [];
 		const info = this.characters.flatMap((character) => [
 			`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
 			`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(

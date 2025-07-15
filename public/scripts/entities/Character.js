@@ -1,13 +1,17 @@
 import { CharacterAnimation } from './animations/CharacterAnimation.js';
 import { CHARACTER_SPRITE, CHARACTER_SPRITE_2 } from './../core/Constants.js';
+import {
+	getPxFromX,
+	getPxFromY,
+} from '../utils/convertCoordsToPixels.function.js';
 
 export class Character {
 	constructor(grid) {
 		this.grid = grid;
 		const { x: validSpawnX, y: validSpawnY } = grid.getRandomValidCell();
 		this.moveToGridCell(validSpawnX, validSpawnY, true);
-		this.characterX = this.grid.getPxFromX(this.gridX);
-		this.characterY = this.grid.getPxFromY(this.gridY);
+		this.characterX = getPxFromX(this.gridX);
+		this.characterY = getPxFromY(this.gridY);
 		this.targetX = this.characterX;
 		this.targetY = this.characterY;
 
@@ -231,8 +235,8 @@ export class Character {
 		let newY = this.characterY;
 
 		// Calcular la posición objetivo en píxeles
-		const targetPxX = this.grid.getPxFromX(this.targetX);
-		const targetPxY = this.grid.getPxFromY(this.targetY);
+		const targetPxX = getPxFromX(this.targetX);
+		const targetPxY = getPxFromY(this.targetY);
 
 		// Mover en el eje X
 		if (this.characterX !== targetPxX) {
@@ -265,14 +269,13 @@ export class Character {
 		this.characterY = newY;
 	}
 
-	draw(ctx) {
-		if (!this.animation) return;
+	generateDrawInfo() {
+		if (!this.animation) return [];
 
 		const characterWidth = this.grid.cellSize;
 		const characterHeight = this.grid.cellSize;
 
-		this.animation.draw(
-			ctx,
+		return this.animation.generateDrawInfo(
 			this.characterX,
 			this.characterY,
 			characterWidth,
