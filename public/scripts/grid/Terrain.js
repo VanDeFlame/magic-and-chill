@@ -90,8 +90,8 @@ export class Terrain {
 					if (
 						nx >= 0 &&
 						ny >= 0 &&
-						nx < this.gridWidth &&
-						ny < this.gridHeight &&
+						nx <= this.gridWidth &&
+						ny <= this.gridHeight &&
 						this.cells[nx][ny].type === 'water'
 					) {
 						this.cells[x][y].type = 'shore';
