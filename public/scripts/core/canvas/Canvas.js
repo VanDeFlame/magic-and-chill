@@ -4,91 +4,20 @@ import {
 	getPxFromY,
 } from '../../utils/convertCoordsToPixels.function.js';
 import { clamp } from '../../utils/clamp.function.js';
+import EventManager from '../../events/eventManager.js';
+
 export class Canvas {
-	constructor(canvas) {
-		this.canvas = canvas;
-		this.ctx = canvas.getContext('2d');
-		const canvasWidth = window.innerWidth;
-		const canvasHeight = window.innerHeight;
-		this.canvas.width = canvasWidth;
-		this.canvas.height = canvasHeight;
+	constructor(gameCanvasHtml) {
+		this.gameCanvasHtml = gameCanvasHtml;
+		this.ctx = gameCanvasHtml.getContext('2d');
+		this.width = gameCanvasHtml.width;
+		this.height = gameCanvasHtml.height;
 		this.cameraPositionX = 0;
 		this.cameraPositionY = 0;
-		this.cameraPositionXMax = getPxFromX(MAP_SIZE.width + 1) - canvasWidth;
-		this.cameraPositionYMax = getPxFromY(MAP_SIZE.height + 1) - canvasHeight;
+		this.cameraPositionXMax = getPxFromX(MAP_SIZE.width + 1) - this.width;
+		this.cameraPositionYMax = getPxFromY(MAP_SIZE.height + 1) - this.height;
 
-		this.setupKeyEvents();
-		this.setupMouseEvents();
-	}
-
-	get width() {
-		return this.canvas.width;
-	}
-	get height() {
-		return this.canvas.height;
-	}
-
-	setupKeyEvents() {
-		this.canvas.setAttribute('tabindex', '0');
-		this.canvas.addEventListener('click', () => {
-			this.canvas.focus();
-		});
-
-		this.canvas.addEventListener('keydown', (e) => {
-			const directions = {
-				ArrowLeft: 'left',
-				ArrowUp: 'up',
-				ArrowDown: 'down',
-				ArrowRight: 'right',
-			};
-			if (e.code in directions) {
-				const directionsDeltas = {
-					left: { deltaX: -20, deltaY: 0 },
-					up: { deltaX: 0, deltaY: -20 },
-					down: { deltaX: 0, deltaY: 20 },
-					right: { deltaX: 20, deltaY: 0 },
-				};
-				this.moveCameraPosition(directionsDeltas[directions[e.code]]);
-			}
-		});
-	}
-
-	setupMouseEvents() {
-		let isMiddleButtonPressed = false;
-		let lastPos = null;
-
-		this.canvas.addEventListener('mousedown', (e) => {
-			if (e.button === 1) {
-				isMiddleButtonPressed = true;
-				lastPos = { x: e.clientX, y: e.clientY };
-				e.preventDefault();
-			}
-		});
-
-		this.canvas.addEventListener('mousemove', (e) => {
-			if (isMiddleButtonPressed && lastPos) {
-				const deltaX = lastPos.x - e.clientX;
-				const deltaY = lastPos.y - e.clientY;
-
-				this.moveCameraPosition({ deltaX, deltaY });
-
-				lastPos = { x: e.clientX, y: e.clientY };
-			}
-		});
-
-		this.canvas.addEventListener('mouseup', (e) => {
-			if (e.button === 1) {
-				isMiddleButtonPressed = false;
-				lastPos = null;
-			}
-		});
-
-		document.addEventListener('mouseup', (e) => {
-			if (e.button === 1) {
-				isMiddleButtonPressed = false;
-				lastPos = null;
-			}
-		});
+		EventManager.setupCameraEvents(this);
 	}
 
 	moveCameraPosition({ deltaX, deltaY }) {
@@ -111,7 +40,7 @@ export class Canvas {
 	}
 
 	drawBackground() {
-		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.ctx.clearRect(0, 0, this.width, this.height);
 	}
 
 	draw(infoToDraw) {

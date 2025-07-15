@@ -1,8 +1,9 @@
 import { Canvas } from './scripts/core/canvas/Canvas.js';
 import { Game } from './scripts/core/Game.js';
 
-const canvas = document.getElementById('canvas');
+GameCanvasHtml.width = window.innerWidth;
+GameCanvasHtml.height = window.innerHeight;
 
-const canvasInstance = new Canvas(canvas);
+const canvasInstance = new Canvas(GameCanvasHtml);
 const game = new Game(canvasInstance);
 game.start();

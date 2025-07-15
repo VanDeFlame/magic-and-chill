@@ -1,10 +1,12 @@
 import { DEBUG_MODE } from './Constants.js';
 import { Grid } from '../grid/Grid.js';
 import { Character } from './../entities/Character.js';
+import EventManager from '../events/eventManager.js';
 
 export class Game {
 	constructor(canvas) {
 		this.canvas = canvas;
+		EventManager.setupCanvasEvents();
 	}
 
 	start() {
