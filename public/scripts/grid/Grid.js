@@ -19,15 +19,10 @@ export class Grid {
 	}
 
 	generateDrawInfo() {
-		// this.drawTerrain(ctx);
 		const cameraX = getXFromPX(this.canvas.cameraPositionX);
 		const cameraY = getYFromPX(this.canvas.cameraPositionY);
-		const cameraWidth = getXFromPX(
-			this.canvas.width + this.canvas.cameraPositionX
-		);
-		const cameraHeight = getYFromPX(
-			this.canvas.height + this.canvas.cameraPositionY
-		);
+		const cameraWidth = getXFromPX(this.canvas.cameraPositionXEnd);
+		const cameraHeight = getYFromPX(this.canvas.cameraPositionYEnd);
 
 		const cellsInfo = [];
 		const cameraX2 = cameraX === 0 ? 0 : cameraX - 1;

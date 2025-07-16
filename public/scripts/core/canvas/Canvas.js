@@ -14,14 +14,36 @@ export class Canvas {
 		this.height = gameCanvasHtml.height;
 		this.cameraPositionX = 0;
 		this.cameraPositionY = 0;
-		this.cameraPositionXMax = getPxFromX(MAP_SIZE.width + 1) - this.width;
-		this.cameraPositionYMax = getPxFromY(MAP_SIZE.height + 1) - this.height;
+		this.cameraZoom = 1;
+		this.maxCanvasAreaX = getPxFromX(MAP_SIZE.width + 1);
+		this.maxCanvasAreaY = getPxFromY(MAP_SIZE.height + 1);
 
 		EventManager.setupCameraEvents(this);
 	}
 
+	get cameraWidth() {
+		const zoomFactor = 1 / this.cameraZoom;
+		return this.width * zoomFactor;
+	}
+	get cameraHeight() {
+		const zoomFactor = 1 / this.cameraZoom;
+		return this.height * zoomFactor;
+	}
+	get cameraPositionXEnd() {
+		return this.cameraPositionX + this.cameraWidth;
+	}
+	get cameraPositionYEnd() {
+		return this.cameraPositionY + this.cameraHeight;
+	}
+	get cameraPositionXMax() {
+		return this.maxCanvasAreaX - this.cameraWidth;
+	}
+	get cameraPositionYMax() {
+		return this.maxCanvasAreaY - this.cameraHeight;
+	}
+
 	moveCameraPosition({ deltaX, deltaY }) {
-		if (deltaX) {
+		if (typeof deltaX === 'number') {
 			const newPositionHorizontal = this.cameraPositionX + deltaX;
 			this.cameraPositionX = clamp(
 				newPositionHorizontal,
@@ -29,7 +51,7 @@ export class Canvas {
 				this.cameraPositionXMax
 			);
 		}
-		if (deltaY) {
+		if (typeof deltaY === 'number') {
 			const newPositionVertical = this.cameraPositionY + deltaY;
 			this.cameraPositionY = clamp(
 				newPositionVertical,
@@ -37,6 +59,35 @@ export class Canvas {
 				this.cameraPositionYMax
 			);
 		}
+	}
+	changeCameraZoom(zoomAction) {
+		const ZoomActionEnum = {
+			in: 1,
+			reset: 0,
+			out: -1,
+		};
+		const minZoom = 0.75;
+		const maxZoom = 4;
+
+		switch (zoomAction) {
+			case ZoomActionEnum.reset:
+				this.cameraZoom = 1;
+				break;
+			case ZoomActionEnum.in:
+				this.cameraZoom = clamp(this.cameraZoom * 2, this.cameraZoom, maxZoom);
+				break;
+			case ZoomActionEnum.out:
+				this.cameraZoom = clamp(
+					this.cameraZoom * 0.75,
+					minZoom,
+					this.cameraZoom
+				);
+				break;
+			default:
+				break;
+		}
+
+		this.moveCameraPosition({ deltaX: 0, deltaY: 0 });
 	}
 
 	drawBackground() {
@@ -50,17 +101,20 @@ export class Canvas {
 
 	drawByAction(drawInfo) {
 		const ctx = this.ctx;
-		const x = drawInfo.x - this.cameraPositionX;
-		const y = drawInfo.y - this.cameraPositionY;
+		const zoom = this.cameraZoom;
+		const width = drawInfo.width * zoom;
+		const height = drawInfo.height * zoom;
+		const x = (drawInfo.x - this.cameraPositionX) * zoom;
+		const y = (drawInfo.y - this.cameraPositionY) * zoom;
 
 		switch (drawInfo.action) {
 			case 'fillRect':
 				ctx.fillStyle = drawInfo.fillStyle;
-				ctx.fillRect(x, y, drawInfo.width, drawInfo.height);
+				ctx.fillRect(x, y, width, height);
 				break;
 			case 'strokeRect':
 				ctx.strokeStyle = drawInfo.strokeStyle;
-				ctx.strokeRect(x, y, drawInfo.width, drawInfo.height);
+				ctx.strokeRect(x, y, width, height);
 
 				break;
 			case 'fillText':
@@ -71,11 +125,11 @@ export class Canvas {
 				ctx.fillText(drawInfo.text, x, y);
 				break;
 			case 'drawImage':
-				const { image, sx, sy, sWidth, sHeight, width, height } = drawInfo;
+				const { image, sx, sy, sWidth, sHeight } = drawInfo;
 
 				if (sWidth && sHeight) {
 					ctx.drawImage(image, sx, sy, sWidth, sHeight, x, y, width, height);
-				} else if (width && height) {
+				} else if (drawImage.width && drawImage.height) {
 					ctx.drawImage(image, x, y, width, height);
 				} else {
 					ctx.drawImage(image, x, y);

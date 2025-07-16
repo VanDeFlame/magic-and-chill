@@ -43,6 +43,8 @@ class EventManager {
 			ArrowUp: 'moveUp',
 			ArrowDown: 'moveDown',
 			ArrowRight: 'moveRight',
+			NumpadAdd: 'zoomIn',
+			NumpadSubtract: 'zoomOut',
 		};
 
 		// Numpad con NumLock desactivado (direcciones)
@@ -51,7 +53,7 @@ class EventManager {
 			ArrowDown: 'moveDown', // Numpad2
 			PageDown: 'moveRightDown', // Numpad3
 			ArrowLeft: 'moveLeft', // Numpad4
-			Clear: null, // Numpad5
+			Clear: 'zoomReset', // Numpad5
 			ArrowRight: 'moveRight', // Numpad6
 			Home: 'moveLeftUp', // Numpad7
 			ArrowUp: 'moveUp', // Numpad8
@@ -75,6 +77,9 @@ class EventManager {
 				cameraInstance.moveCameraPosition({ deltaX: -20, deltaY: 20 }),
 			moveRightDown: () =>
 				cameraInstance.moveCameraPosition({ deltaX: 20, deltaY: 20 }),
+			zoomReset: () => cameraInstance.changeCameraZoom(0),
+			zoomIn: () => cameraInstance.changeCameraZoom(1),
+			zoomOut: () => cameraInstance.changeCameraZoom(-1),
 		};
 
 		this.gameCanvasHtml.addEventListener('keydown', (e) => {
