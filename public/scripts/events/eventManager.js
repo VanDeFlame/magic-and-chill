@@ -123,6 +123,15 @@ class EventManager {
 				this.stopTrackingMouse();
 			}
 		});
+
+		this.gameCanvasHtml.addEventListener('wheel', (e) => {
+			e.preventDefault();
+			if (e.deltaY < 0) {
+				cameraInstance.changeCameraZoom(1);
+			} else if (e.deltaY > 0) {
+				cameraInstance.changeCameraZoom(-1);
+			}
+		});
 	}
 }
 
