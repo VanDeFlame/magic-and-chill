@@ -111,61 +111,6 @@ export class Grid {
 		return drawInfo;
 	}
 
-	// drawTerrain(ctx) {
-	// 	ctx.font = `${this.cellSize * 0.6}px serif`;
-	// 	ctx.textAlign = 'center';
-	// 	ctx.textBaseline = 'middle';
-
-	// 	for (let x = 0; x < this.gridWidth; x++) {
-	// 		for (let y = 0; y < this.gridHeight; y++) {
-	// 			const cell = this.cells[x][y];
-	// 			const cx = this.getPxFromX(x);
-	// 			const cy = this.getPxFromY(y);
-
-	// 			// fondo
-	// 			ctx.fillStyle = cell.color;
-	// 			ctx.fillRect(cx, cy, this.cellSize, this.cellSize);
-
-	// 			// borde
-	// 			ctx.strokeStyle = 'rgba(49, 45, 45, 0.4)';
-	// 			ctx.strokeRect(cx, cy, this.cellSize, this.cellSize);
-
-	// 			// emoji
-	// 			if (cell.emoji) {
-	// 				ctx.fillStyle = 'black';
-	// 				ctx.fillText(
-	// 					cell.emoji,
-	// 					cx + this.cellSize / 2,
-	// 					cy + this.cellSize / 2
-	// 				);
-	// 			}
-
-	// 			if (DEBUG_MODE) {
-	// 				if (cell.isOccupied) {
-	// 					ctx.fillStyle = 'rgba(200, 45, 45, 0.4)';
-	// 					ctx.fillRect(cx, cy, this.cellSize, this.cellSize);
-	// 				}
-
-	// 				const defaultFont = ctx.font;
-	// 				ctx.font = `${this.cellSize * 0.2}px serif`;
-	// 				ctx.fillStyle = 'black';
-	// 				ctx.fillText(
-	// 					`[${x}, ${y}]`,
-	// 					cx + this.cellSize / 2,
-	// 					cy + this.cellSize / 2 - this.cellSize * 0.3
-	// 				);
-	// 				ctx.fillText(
-	// 					cell.type,
-	// 					cx + this.cellSize / 2,
-	// 					cy + this.cellSize / 2 + this.cellSize * 0.3
-	// 				);
-	// 				ctx.font = defaultFont; // Restaurar fuente por defecto
-	// 				ctx.fillStyle = 'normal'; // Restaurar color por defecto
-	// 			}
-	// 		}
-	// 	}
-	// }
-
 	isValidCell(x, y, ignoreOccupied = false) {
 		return (
 			x >= 0 &&
