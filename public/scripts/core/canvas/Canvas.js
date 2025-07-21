@@ -1,10 +1,9 @@
 import { MAP_SIZE } from '../Constants.js';
+import { Camera } from './Camera.js';
 import {
 	getPxFromX,
 	getPxFromY,
 } from '../../utils/convertCoordsToPixels.function.js';
-import { clamp } from '../../utils/clamp.function.js';
-import EventManager from '../../events/eventManager.js';
 
 export class Canvas {
 	constructor(gameCanvasHtml) {
@@ -12,82 +11,13 @@ export class Canvas {
 		this.ctx = gameCanvasHtml.getContext('2d');
 		this.width = gameCanvasHtml.width;
 		this.height = gameCanvasHtml.height;
-		this.cameraPositionX = 0;
-		this.cameraPositionY = 0;
-		this.cameraZoom = 1;
-		this.maxCanvasAreaX = getPxFromX(MAP_SIZE.width + 1);
-		this.maxCanvasAreaY = getPxFromY(MAP_SIZE.height + 1);
 
-		EventManager.setupCameraEvents(this);
-	}
-
-	get cameraWidth() {
-		const zoomFactor = 1 / this.cameraZoom;
-		return this.width * zoomFactor;
-	}
-	get cameraHeight() {
-		const zoomFactor = 1 / this.cameraZoom;
-		return this.height * zoomFactor;
-	}
-	get cameraPositionXEnd() {
-		return this.cameraPositionX + this.cameraWidth;
-	}
-	get cameraPositionYEnd() {
-		return this.cameraPositionY + this.cameraHeight;
-	}
-	get cameraPositionXMax() {
-		return this.maxCanvasAreaX - this.cameraWidth;
-	}
-	get cameraPositionYMax() {
-		return this.maxCanvasAreaY - this.cameraHeight;
-	}
-
-	moveCameraPosition({ deltaX, deltaY }) {
-		if (typeof deltaX === 'number') {
-			const newPositionHorizontal = this.cameraPositionX + deltaX;
-			this.cameraPositionX = clamp(
-				newPositionHorizontal,
-				0,
-				this.cameraPositionXMax
-			);
-		}
-		if (typeof deltaY === 'number') {
-			const newPositionVertical = this.cameraPositionY + deltaY;
-			this.cameraPositionY = clamp(
-				newPositionVertical,
-				0,
-				this.cameraPositionYMax
-			);
-		}
-	}
-	changeCameraZoom(zoomAction) {
-		const ZoomActionEnum = {
-			in: 1,
-			reset: 0,
-			out: -1,
-		};
-		const minZoom = 0.75;
-		const maxZoom = 4;
-
-		switch (zoomAction) {
-			case ZoomActionEnum.reset:
-				this.cameraZoom = 1;
-				break;
-			case ZoomActionEnum.in:
-				this.cameraZoom = clamp(this.cameraZoom * 2, this.cameraZoom, maxZoom);
-				break;
-			case ZoomActionEnum.out:
-				this.cameraZoom = clamp(
-					this.cameraZoom * 0.75,
-					minZoom,
-					this.cameraZoom
-				);
-				break;
-			default:
-				break;
-		}
-
-		this.moveCameraPosition({ deltaX: 0, deltaY: 0 });
+		this.camera = new Camera(
+			this.width,
+			this.height,
+			getPxFromX(MAP_SIZE.width + 1),
+			getPxFromY(MAP_SIZE.height + 1)
+		);
 	}
 
 	drawBackground() {
@@ -101,11 +31,10 @@ export class Canvas {
 
 	drawByAction(drawInfo) {
 		const ctx = this.ctx;
-		const zoom = this.cameraZoom;
-		const width = drawInfo.width * zoom;
-		const height = drawInfo.height * zoom;
-		const x = (drawInfo.x - this.cameraPositionX) * zoom;
-		const y = (drawInfo.y - this.cameraPositionY) * zoom;
+		const width = this.camera.applyZoom(drawInfo.width);
+		const height = this.camera.applyZoom(drawInfo.height);
+		const x = this.camera.toCameraRelativeX(drawInfo.x);
+		const y = this.camera.toCameraRelativeY(drawInfo.y);
 
 		switch (drawInfo.action) {
 			case 'fillRect':

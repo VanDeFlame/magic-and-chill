@@ -8,8 +8,8 @@ import {
 } from '../utils/convertCoordsToPixels.function.js';
 
 export class Grid {
-	constructor(canvas) {
-		this.canvas = canvas;
+	constructor(camera) {
+		this.camera = camera;
 		this.cellSize = CELL_SIZE;
 		this.gridWidth = MAP_SIZE.width;
 		this.gridHeight = MAP_SIZE.height;
@@ -19,16 +19,15 @@ export class Grid {
 	}
 
 	generateDrawInfo() {
-		const cameraX = getXFromPX(this.canvas.cameraPositionX);
-		const cameraY = getYFromPX(this.canvas.cameraPositionY);
-		const cameraWidth = getXFromPX(this.canvas.cameraPositionXEnd);
-		const cameraHeight = getYFromPX(this.canvas.cameraPositionYEnd);
+		const startX = Math.max(0, getXFromPX(this.camera.positionX) - 1);
+		const startY = Math.max(0, getYFromPX(this.camera.positionY) - 1);
+		const endX = getXFromPX(this.camera.viewportRight);
+		const endY = getYFromPX(this.camera.viewportBottom);
 
 		const cellsInfo = [];
-		const cameraX2 = cameraX === 0 ? 0 : cameraX - 1;
-		const cameraY2 = cameraY === 0 ? 0 : cameraY - 1;
-		for (let x = cameraX2; x <= cameraWidth; x++) {
-			for (let y = cameraY2; y <= cameraHeight; y++) {
+
+		for (let x = startX; x <= endX; x++) {
+			for (let y = startY; y <= endY; y++) {
 				cellsInfo.push(...this.generateDrawInfoCell(x, y));
 			}
 		}

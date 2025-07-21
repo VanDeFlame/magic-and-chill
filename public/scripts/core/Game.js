@@ -10,7 +10,7 @@ export class Game {
 	}
 
 	start() {
-		this.grid = new Grid(this.canvas);
+		this.grid = new Grid(this.canvas.camera);
 		this.characters = [
 			new Character(this.grid),
 			new Character(this.grid),
