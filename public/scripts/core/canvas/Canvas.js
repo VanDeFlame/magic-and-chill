@@ -4,6 +4,7 @@ import {
 	getPxFromX,
 	getPxFromY,
 } from '../../utils/convertCoordsToPixels.function.js';
+import { calculateArrayTextWidth } from '../../utils/calculateTextWidth.function.js';
 
 const PositionHorizontalEnum = {
 	LEFT: 'left',
@@ -114,7 +115,12 @@ export class Canvas {
 			const sector = sectorMap.get(key);
 
 			const lineHeight = info.fontSize * 1.5;
-			const infoWidth = (info.width ?? 300) + bothSidesPadding;
+			const estimatedTextWidth = calculateArrayTextWidth(
+				info.texts,
+				info.fontSize,
+				this.ctx
+			);
+			const infoWidth = (info.width ?? estimatedTextWidth) + bothSidesPadding;
 			const infoHeight = info.texts.length * lineHeight + bothSidesPadding;
 
 			const infoX = this.getHorizontalPositionInScreen(

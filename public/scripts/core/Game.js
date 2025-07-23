@@ -48,13 +48,13 @@ export class Game {
 			positionHorizontal: 'right',
 			positionVertical: 'top',
 			fontSize: 10,
-			width: 250,
 			color: 'black',
 			background: 'rgba(255, 255, 255, 0.8)',
 		};
 
 		const charactersInfo = this.characters.map((character) => ({
 			...infoToDraw,
+			width: 225,
 			texts: [
 				`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
 				`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
@@ -76,7 +76,6 @@ export class Game {
 			{
 				...infoToDraw,
 				positionHorizontal: 'left',
-				width: 150,
 				texts: gameInfo,
 			},
 			...charactersInfo,
@@ -84,7 +83,6 @@ export class Game {
 				...infoToDraw,
 				positionVertical: 'middle',
 				positionHorizontal: 'right',
-				width: 150,
 				texts: gameInfo,
 			},
 		];
