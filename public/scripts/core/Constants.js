@@ -1,5 +1,5 @@
 export const MAP_SIZE = {
-	width: 30,
+	width: 50,
 	height: 30,
 };
 export const CELL_SIZE = 64; // Tamaño de cada celda en píxeles
