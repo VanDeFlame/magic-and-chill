@@ -43,19 +43,50 @@ export class Game {
 
 	generateDebugInfo() {
 		if (!DEBUG_MODE) return [];
-		const info = this.characters.flatMap((character) => [
-			`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
-			`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
-				character.characterY
-			)}`,
-			`State: ${character.state} - Duration: ${character.stateDuration} ms`,
-			`Animation: ${character.animation.currentAction}`,
-			`Task Queue: ${character.taskQueue.length}`,
-			'',
-		]);
 
-		info.unshift(`Characters #: ${this.characters.length}`, '');
+		const infoToDraw = {
+			positionHorizontal: 'right',
+			positionVertical: 'top',
+			fontSize: 10,
+			width: 250,
+			color: 'black',
+			background: 'rgba(255, 255, 255, 0.8)',
+		};
 
-		this.canvas.drawDebugOverlay(info);
+		const charactersInfo = this.characters.map((character) => ({
+			...infoToDraw,
+			texts: [
+				`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
+				`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
+					character.characterY
+				)}`,
+				`State: ${character.state} - Duration: ${character.stateDuration} ms`,
+				`Animation: ${character.animation.currentAction}`,
+				`Task Queue: ${character.taskQueue.length}`,
+			],
+		}));
+
+		const gameInfo = [
+			`Canvas Size: ${this.canvas.width}x${this.canvas.height}`,
+			`Grid Size: ${this.grid.gridWidth}x${this.grid.gridHeight}`,
+			`Characters #: ${this.characters.length}`,
+		];
+
+		return [
+			{
+				...infoToDraw,
+				positionHorizontal: 'left',
+				width: 150,
+				texts: gameInfo,
+			},
+			...charactersInfo,
+			{
+				...infoToDraw,
+				positionVertical: 'middle',
+				positionHorizontal: 'right',
+				width: 150,
+				texts: gameInfo,
+			},
+		];
 	}
 }
