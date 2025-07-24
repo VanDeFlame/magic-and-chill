@@ -42,7 +42,7 @@ export class Game {
 	}
 
 	generateDebugInfo() {
-		if (!DEBUG_MODE) return [];
+		if (!DEBUG_MODE.misc || !DEBUG_MODE.characters) return [];
 
 		const infoToDraw = {
 			positionHorizontal: 'right',
@@ -51,40 +51,38 @@ export class Game {
 			color: 'black',
 			background: 'rgba(255, 255, 255, 0.8)',
 		};
+		const debugInfo = [];
 
-		const charactersInfo = this.characters.map((character) => ({
-			...infoToDraw,
-			width: 225,
-			texts: [
-				`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
-				`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
-					character.characterY
-				)}`,
-				`State: ${character.state} - Duration: ${character.stateDuration} ms`,
-				`Animation: ${character.animation.currentAction}`,
-				`Task Queue: ${character.taskQueue.length}`,
-			],
-		}));
+		if (DEBUG_MODE.characters) {
+			this.characters.forEach((character) =>
+				debugInfo.push({
+					...infoToDraw,
+					width: 225,
+					texts: [
+						`Grid: [${character.gridX}, ${character.gridY}] -> [${character.targetX}, ${character.targetY}]`,
+						`X: ${Math.floor(character.characterX)}, Y: ${Math.floor(
+							character.characterY
+						)}`,
+						`State: ${character.state} - Duration: ${character.stateDuration} ms`,
+						`Animation: ${character.animation.currentAction}`,
+						`Task Queue: ${character.taskQueue.length}`,
+					],
+				})
+			);
+		}
 
-		const gameInfo = [
-			`Canvas Size: ${this.canvas.width}x${this.canvas.height}`,
-			`Grid Size: ${this.grid.gridWidth}x${this.grid.gridHeight}`,
-			`Characters #: ${this.characters.length}`,
-		];
-
-		return [
-			{
+		if (DEBUG_MODE.misc) {
+			debugInfo.push({
 				...infoToDraw,
 				positionHorizontal: 'left',
-				texts: gameInfo,
-			},
-			...charactersInfo,
-			{
-				...infoToDraw,
-				positionVertical: 'middle',
-				positionHorizontal: 'right',
-				texts: gameInfo,
-			},
-		];
+				texts: [
+					`Canvas Size: ${this.canvas.width}x${this.canvas.height}`,
+					`Grid Size: ${this.grid.gridWidth}x${this.grid.gridHeight}`,
+					`Characters #: ${this.characters.length}`,
+				],
+			});
+		}
+
+		return debugInfo;
 	}
 }

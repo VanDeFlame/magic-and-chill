@@ -161,7 +161,7 @@ export class Grid {
 		}));
 
 		// 🐞 Debug extra
-		if (DEBUG_MODE) {
+		if (DEBUG_MODE.grid) {
 			const debugDraws = this.generateDrawCellTypeDebug(x, y, cell).map(
 				(item) => ({
 					...item,
