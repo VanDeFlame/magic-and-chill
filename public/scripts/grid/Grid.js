@@ -16,9 +16,31 @@ export class Grid {
 
 		const terrain = new Terrain(this.gridWidth, this.gridHeight);
 		this.cells = terrain.cells;
+
+		// Cache para evitar recalcular la visual del grid
+		this.cellTypeTemplateCache = new Map();
+		this._lastCameraSnapshot = null;
+		this._cachedDrawInfo = [];
 	}
 
 	generateDrawInfo() {
+		const snapshot = {
+			x: this.camera.positionX,
+			y: this.camera.positionY,
+			zoom: this.camera.zoom,
+		};
+
+		// No cambió nada -> usar cache
+		if (
+			this._lastCameraSnapshot &&
+			this._lastCameraSnapshot.x === snapshot.x &&
+			this._lastCameraSnapshot.y === snapshot.y &&
+			this._lastCameraSnapshot.zoom === snapshot.zoom &&
+			!DEBUG_MODE
+		) {
+			return this._cachedDrawInfo;
+		}
+
 		const startX = Math.max(0, getXFromPX(this.camera.positionX) - 1);
 		const startY = Math.max(0, getYFromPX(this.camera.positionY) - 1);
 		const endX = getXFromPX(this.camera.viewportRight);
@@ -32,80 +54,122 @@ export class Grid {
 			}
 		}
 
+		this._lastCameraSnapshot = snapshot;
+		this._cachedDrawInfo = cellsInfo;
 		return cellsInfo;
 	}
 
-	generateDrawInfoCell(x, y) {
-		const cell = this.cells[x][y];
+	generateDrawCellTypeTemplate(cell) {
+		const key = `${cell.type}|${cell.color}|${cell.emoji || ''}`;
+		if (this.cellTypeTemplateCache.has(key)) {
+			return this.cellTypeTemplateCache.get(key);
+		}
+
 		const cellSize = this.cellSize;
 		const paddingCenter = cellSize / 2;
-		const pxX = getPxFromX(x);
-		const pxY = getPxFromY(y);
+		const baseDrawInfo = [
+			{
+				fillStyle: cell.color,
+				action: 'fillRect',
+				width: cellSize,
+				height: cellSize,
+				x: 0,
+				y: 0,
+			},
+			{
+				strokeStyle: 'rgba(49, 45, 45, 0.4)',
+				action: 'strokeRect',
+				width: cellSize,
+				height: cellSize,
+				x: 0,
+				y: 0,
+			},
+		];
 
-		const drawInfoTemplate = {
-			font: `${cellSize * 0.6}px serif`,
+		if (cell.emoji) {
+			baseDrawInfo.push({
+				fillStyle: 'black',
+				action: 'fillText',
+				font: `${cellSize * 0.6}px serif`,
+				textAlign: 'center',
+				textBaseline: 'middle',
+				text: cell.emoji,
+				width: cellSize,
+				height: cellSize,
+				x: paddingCenter,
+				y: paddingCenter,
+			});
+		}
+
+		this.cellTypeTemplateCache.set(key, baseDrawInfo);
+		return baseDrawInfo;
+	}
+
+	generateDrawCellTypeDebug(x, y, cell) {
+		const debugInfo = [];
+		const cellSize = this.cellSize;
+		const paddingCenter = cellSize / 2;
+
+		if (cell.isOccupied) {
+			debugInfo.push({
+				fillStyle: 'rgba(200, 45, 45, 0.4)',
+				action: 'fillRect',
+				width: cellSize,
+				height: cellSize,
+				x: 0,
+				y: 0,
+			});
+		}
+
+		const baseTextDraw = {
+			fillStyle: 'black',
+			action: 'fillText',
+			font: `${cellSize * 0.2}px serif`,
 			textAlign: 'center',
 			textBaseline: 'middle',
-			x: pxX,
-			y: pxY,
 			width: cellSize,
 			height: cellSize,
 		};
 
-		const drawInfo = [
+		debugInfo.push(
 			{
-				...drawInfoTemplate,
-				fillStyle: cell.color,
-				action: 'fillRect',
+				...baseTextDraw,
+				text: `[${x}, ${y}]`,
+				x: paddingCenter,
+				y: paddingCenter + cellSize * -0.3,
 			},
 			{
-				...drawInfoTemplate,
-				strokeStyle: 'rgba(49, 45, 45, 0.4)',
-				action: 'strokeRect',
-			},
-		];
-
-		// emoji
-		if (cell.emoji) {
-			drawInfo.push({
-				...drawInfoTemplate,
-				fillStyle: 'black',
-				text: cell.emoji,
-				x: pxX + paddingCenter,
-				y: pxY + paddingCenter,
-				action: 'fillText',
-			});
-		}
-
-		if (DEBUG_MODE) {
-			if (cell.isOccupied) {
-				drawInfo.push({
-					...drawInfoTemplate,
-					fillStyle: 'rgba(200, 45, 45, 0.4)',
-					action: 'fillRect',
-				});
+				...baseTextDraw,
+				text: cell.type,
+				x: paddingCenter,
+				y: paddingCenter + cellSize * 0.3,
 			}
+		);
 
-			drawInfo.push(
-				{
-					...drawInfoTemplate,
-					font: `${cellSize * 0.2}px serif`,
-					fillStyle: 'black',
-					action: 'fillText',
-					text: `[${x}, ${y}]`,
-					x: pxX + paddingCenter,
-					y: pxY + paddingCenter - cellSize * 0.3,
-				},
-				{
-					...drawInfoTemplate,
-					font: `${cellSize * 0.2}px serif`,
-					fillStyle: 'black',
-					action: 'fillText',
-					text: cell.type,
-					x: pxX + paddingCenter,
-					y: pxY + paddingCenter + cellSize * 0.3,
-				}
+		return debugInfo;
+	}
+
+	generateDrawInfoCell(x, y) {
+		const cell = this.cells[x][y];
+		const pxX = getPxFromX(x);
+		const pxY = getPxFromY(y);
+
+		const drawInfo = this.generateDrawCellTypeTemplate(cell).map((item) => ({
+			...item,
+			x: pxX + item.x,
+			y: pxY + item.y,
+		}));
+
+		// 🐞 Debug extra
+		if (DEBUG_MODE) {
+			const debugDraws = this.generateDrawCellTypeDebug(x, y, cell).map(
+				(item) => ({
+					...item,
+					x: pxX + item.x,
+					y: pxY + item.y,
+				})
 			);
+			drawInfo.push(...debugDraws);
 		}
 
 		return drawInfo;
