@@ -61,6 +61,7 @@ export class Camera {
 			reset: 0,
 			out: -1,
 		};
+		const zoomStep = 0.25;
 		const minZoom = 0.75;
 		const maxZoom = 4;
 
@@ -69,10 +70,10 @@ export class Camera {
 				this.zoom = 1;
 				break;
 			case ZoomActionEnum.in:
-				this.zoom = clamp(this.zoom * 2, this.zoom, maxZoom);
+				this.zoom = clamp(this.zoom + zoomStep, this.zoom, maxZoom);
 				break;
 			case ZoomActionEnum.out:
-				this.zoom = clamp(this.zoom * 0.75, minZoom, this.zoom);
+				this.zoom = clamp(this.zoom - zoomStep, minZoom, this.zoom);
 				break;
 			default:
 				break;
