@@ -16,6 +16,7 @@ export class Hud {
 		this.height = height;
 		this.ctx = ctx;
 		this.padding = 10;
+		this.textWidthCache = new Map();
 		this.sectorMap = new Map();
 	}
 
@@ -85,11 +86,13 @@ export class Hud {
 	calculateInfoSize(info) {
 		const lineHeight = info.fontSize * 1.5;
 		const bothSidesPadding = this.padding * 2;
-		const estimatedTextWidth = calculateArrayTextWidth(
-			info.texts,
-			info.fontSize,
-			this.ctx
-		);
+		const estimatedTextWidth = calculateArrayTextWidth({
+			texts: info.texts,
+			fontSize: info.fontSize,
+			ctx: this.ctx,
+			cache: this.textWidthCache,
+		});
+
 		const infoWidth = (info.width ?? estimatedTextWidth) + bothSidesPadding;
 		const infoHeight = info.texts.length * lineHeight + bothSidesPadding;
 
